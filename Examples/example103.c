@@ -2,9 +2,10 @@
     ***************************************************************************
       @file         example103.c
       @author       ADI
-      @version      V2.0.0
-      @date         15-July-2016
+      @version      V2.0.1
+      @date         19-December-2016
       @brief        Sample application to use ADI ADPD103 driver.
+    ***************************************************************************
 */
 /******************************************************************************
 *                                                                             *
@@ -59,10 +60,13 @@
 
 
 /* Macros -------------------------------------------------------------------*/
-#define debug(M, ...)  {_SBZ[0] = 0; \
-                        snprintf(_SBZ, BUF_SIZE, "" M "", ##__VA_ARGS__); \
-                        adi_printf("%s", _SBZ);}
-
+#define debug(M, ...)  { _SBZ[0] = 0; \
+			snprintf(_SBZ, BUF_SIZE, "" M "", ##__VA_ARGS__); \
+			adi_printf("%s", _SBZ); }
+/*    Uncomment  the following macro to set the sensor in sample mode */
+// #define ADPD_SAMPLE_MODE
+/*    Uncomment  the following macro to set the sensor in proximity mode */
+#define ADPD_PROXIMITY_MODE
 
 /* Private define ---------------------------------------------------------- */
 uint32_t gnAdpdTimeCurVal = 0;
@@ -72,12 +76,9 @@ uint8_t gnAdpdDataReady = 0;
 #define BUF_SIZE (256)
 char _SBZ[BUF_SIZE]; // used by 'debug'
 
-
 uint32_t dcfg_org_103[] = {
-	0x00060000,
-	0x00113120,
+#ifdef ADPD_SAMPLE_MODE
 	0x00120028,
-	0x00140557,
 	0x00150220,
 	0x00181F00,
 	0x00191F00,
@@ -87,17 +88,29 @@ uint32_t dcfg_org_103[] = {
 	0x001F1F00,
 	0x00201F00,
 	0x00211F00,
-	0x00223000,
+	0x00340000,
+#elif defined(ADPD_PROXIMITY_MODE)
+	0x00130FA0,
+	0x00150000,
+	0x002A0600,
+	0x002F8000,
+	0x00330113,
+	0x00340200,
+	0x003A24D4,
+#endif
+	0x00060000,
+	0x00113120,
+	0x00140555,
+	0x00223030,
 	0x00233002,
 	0x00243000,
 	0x0025630C,
 	0x00300219,
 	0x00310113,
-	0x00340000,
 	0x00350219,
 	0x00360813,
-	0x003919FB,
-	0x003B19FB,
+	0x003921FB,
+	0x003B21FB,
 	0x00421C36,
 	0x00441C35,
 	0x00000000,
@@ -136,48 +149,48 @@ void AdpdFifoCallBack(void)
 {
 	/* Read the timestamp when the interrupt comes */
 	gnAdpdTimeCurVal = MCU_HAL_GetTick();
-	/* Set gnAdpdDataReady to 1 to indicate that the data and timestamp is ready */
+	/* Set gnAdpdDataReady to 1 to indicate that the data and timestamp
+	   is ready */
 	gnAdpdDataReady = 1;
 }
 
 /**
-                                 * Flow diagram of the code *
+				* Flow diagram of the code *
 
-                                 ----------------------------
-                                 | Hardware initializations |
-                                 ----------------------------
-                                             |
-                                             |
-                                 ----------------------------
-                                 |  Data ready callback     |
-                                 ----------------------------
-                                             |
-                                             |
-                                 ----------------------------
-                                 |Soft reset the ADPD device|
-                                 |Initialize the ADPD driver|
-                                 ----------------------------
-                                             |
-                                             |
-                                 ----------------------------
-                                 | Load the default config  |
-                                 | and verify it            |
-                                 ----------------------------
-                                             |
-                                             |
-                                 ----------------------------
-                                 | Write standard value of  |
-                                 | clock registers          |
-                                 ----------------------------
-                                             |
-                                             |
-                                 ----------------------------
-                             --->|     Driver bring up      |
-                             |   ----------------------------
-                             |               |
-                             |               |
-                             |---------------|
-
+				----------------------------
+				| Hardware initializations |
+				----------------------------
+					    |
+					    |
+				----------------------------
+				|  Data ready callback     |
+				----------------------------
+					    |
+					    |
+				----------------------------
+				|Soft reset the ADPD device|
+				|Initialize the ADPD driver|
+				----------------------------
+					    |
+					    |
+				----------------------------
+				| Load the default config  |
+				| and verify it            |
+				----------------------------
+					    |
+					    |
+				----------------------------
+				| Write standard value of  |
+				| clock registers          |
+				----------------------------
+					    |
+					    |
+				----------------------------
+			    --->|     Driver bring up      |
+			    |   ----------------------------
+			    |               |
+			    |               |
+			    |---------------|
 
 */
 
@@ -188,11 +201,10 @@ void AdpdFifoCallBack(void)
 */
 void main(void)
 {
-
 	/* Hardware initializations */
 	HW_Global_Init();
 
-	debug("Start");
+	debug("Start\r\n");
 
 	/* Register data ready callback */
 	AdpdDrvDataReadyCallback(AdpdFifoCallBack);
@@ -205,16 +217,21 @@ void main(void)
 
 	/* Load default configuration parameters */
 	LoadDefaultConfig(dcfg_org_103);
-	/* Read default configuration parameters from the device registers and verify */
+	/* Read default configuration parameters from the device registers
+	   and verify */
 	VerifyDefaultConfig(dcfg_org_103);
 
 	/* Write standard value of clock registers */
 	AdpdDrvRegWrite(0x004B, 0x2695);
 	AdpdDrvRegWrite(0x004D, 0x4272);
 
+#ifdef ADPD_SAMPLE_MODE
 	/* Driver bring up with 16-bits output data and 8 channel mode */
 	AdpdDriverBringUp(ADPDDrv_4CH_16, ADPDDrv_4CH_16);
-
+#elif defined(ADPD_PROXIMITY_MODE)
+	/* Driver bring up with proximity mode */
+	AdpdDriverBringUp(ADPDDrv_PROXIMITY, ADPDDrv_SLOT_OFF);
+#endif
 }
 
 /**
@@ -224,8 +241,8 @@ void main(void)
 */
 void HW_Global_Init()
 {
-
-	/* HAL initializations such as enabling system tick and low level hardware initialization.*/
+	/* HAL initializations such as enabling system tick and low level
+	   hardware initialization.*/
 	HAL_Init();
 	/* Configure the system clock to 26 Mhz */
 	SystemClock_Config();
@@ -248,9 +265,8 @@ void LoadDefaultConfig(uint32_t *cfg)
 {
 	uint8_t regAddr, i;
 	uint16_t regData;
-	if (cfg == 0) {
+	if (cfg == 0)
 		return;
-	}
 	/* Clear the FIFO */
 	AdpdDrvRegWrite(0x10, 0);
 	AdpdDrvRegWrite(0x5F, 1);
@@ -262,13 +278,11 @@ void LoadDefaultConfig(uint32_t *cfg)
 		regAddr = (uint8_t)(cfg[i] >> 16);
 		regData = (uint16_t)(cfg[i]);
 		i++;
-		if (regAddr == 0xFF) {
+		if (regAddr == 0xFF)
 			break;
-		}
 		/* Load the data into the ADPD registers */
-		if (AdpdDrvRegWrite(regAddr, regData) != ADPDDrv_SUCCESS) {
+		if (AdpdDrvRegWrite(regAddr, regData) != ADPDDrv_SUCCESS)
 			break;
-		}
 	}
 }
 
@@ -283,9 +297,8 @@ void VerifyDefaultConfig(uint32_t *cfg)
 	uint8_t  i;
 	uint8_t  regAddr;
 	uint16_t regData;
-	if (cfg == 0) {
+	if (cfg == 0)
 		return;
-	}
 	i = 0;
 	/* Read the address and data from the config */
 	regAddr = (uint8_t)(cfg[0] >> 16);
@@ -296,7 +309,8 @@ void VerifyDefaultConfig(uint32_t *cfg)
 			debug("DCFG: Read Error reg(%0.2x)\n", regAddr);
 			return;
 		} else if (regData != def_val) {
-			debug("DCFG: Read mismatch reg(%0.2x) (%0.2x != %0.2x)\n",
+			debug("DCFG: Read mismatch reg(%0.2x) (%0.2x !="\
+			      " %0.2x)\n",
 			      regAddr, def_val, regData);
 			return;
 		}
@@ -316,18 +330,29 @@ void AdpdDriverBringUp(uint8_t nSlotA, uint8_t nSlotB)
 {
 	uint32_t LoopCnt;
 	uint16_t nRetValue = 0;
-	uint16_t nAdpdFifoLevelSize = 0, nAdpdDataSetSize = 16;
+	uint16_t nAdpdFifoLevelSize = 0, nAdpdDataSetSize;
 	uint8_t value[16] = {0};
+	uint8_t nLoopLim;
 
 	/* Set the slot modes for slot A and slot B */
 	AdpdDrvSetSlot(nSlotA, nSlotB);
 
-	/* Set the device operation to sample mode. The data can be collected now */
+#ifdef ADPD_SAMPLE_MODE
+	/* Set the device operation to sample mode.
+	   The data can be collected now */
 	AdpdDrvSetOperationMode(ADPDDrv_MODE_SAMPLE);
-
+	nLoopLim = 16;
+	nAdpdDataSetSize = 16;
+#elif defined(ADPD_PROXIMITY_MODE)
+	/* Set the device operation to proximity mode.
+	   The data can be collected now */
+	AdpdDrvSetOperationMode(ADPDDrv_MODE_PROXIMITY);
+	nLoopLim = 2;
+	nAdpdDataSetSize = 2;
+#endif
 	while (1) {
 		/* Check if the data is ready */
-		if(gnAdpdDataReady)  {
+		if (gnAdpdDataReady)  {
 			gnAdpdDataReady = 0;
 			/* Read the size of the data available in the FIFO */
 			AdpdDrvGetParameter(ADPD_FIFOLEVEL, &nAdpdFifoLevelSize);
@@ -335,7 +360,7 @@ void AdpdDriverBringUp(uint8_t nSlotA, uint8_t nSlotB)
 			while (nAdpdFifoLevelSize >= nAdpdDataSetSize) {
 				nRetValue = AdpdDrvReadFifoData(&value[0], nAdpdDataSetSize);
 				if (nRetValue == ADPDDrv_SUCCESS) {
-					for (LoopCnt = 0; LoopCnt < 16; LoopCnt += 2)
+					for (LoopCnt = 0; LoopCnt < nLoopLim; LoopCnt += 2)
 						/* Byte swapping is needed to print ADPD data in proper format */
 						debug("%u ", (value[LoopCnt] << 8) | value[LoopCnt + 1]);
 					debug("%u\r\n", gnAdpdTimeCurVal);
@@ -345,3 +370,4 @@ void AdpdDriverBringUp(uint8_t nSlotA, uint8_t nSlotB)
 		}
 	}
 }
+

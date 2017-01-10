@@ -2,8 +2,8 @@
     ***************************************************************************
     * @file     AdpdDrv.c
     * @author   ADI
-    * @version  V2.0
-    * @date     20-July-2016
+    * @version  V2.1
+    * @date     19-December-2016
     * @brief    Reference design device driver to access ADI ADPD chip.
     ***************************************************************************
 */
@@ -76,10 +76,11 @@
 *   Renamed MCU_HAL_I2C_TxRx() to ADPD_I2C_TxRx()                             *
 *   Renamed MCU_HAL_I2C_Transmit()() to ADPD_I2C_Transmit()                   *
 *   Removed GPIO_Pin argument from AdpdISR                                    *
-* Version 2.0, July 20, 2016                                                  *
+* Version 2.0, Oct 12, 2015                                                   *
 *   Simplified the driver code by moving the ring buffer to the application   *
-*   New functions and API added
-*   Support for ADPD105/6/7 added                                             *
+*   New functions and API added                                               *
+* Version 2.1, Dec 16, 2016                                                   *
+*   Added Proximity mode support                                              *
 ******************************************************************************/
 
 /* ------------------------- Includes -------------------------------------- */
@@ -92,11 +93,12 @@
 #include "Common.h"
 /* ------------------------- Defines  --------------------------------------- */
 
-// #define AdpdISR(s)                    HAL_GPIO_EXTI_Callback(s)
-// #define DEBUG_MODE_LED             // use LED for debugging
+/* #define AdpdISR(s)                    HAL_GPIO_EXTI_Callback(s)
+#define DEBUG_MODE_LED             // use LED for debugging*/
 #define INTERRUPT_ENABLE
 #define CLR_HFIFO_SAMPLE
 #define DEVICE_ID_516           0x0516
+//#define PROX_SAMPLE_EN
 
 #ifdef INTERRUPT_ENABLE
 /*  Interrupt pin is enabled
@@ -112,7 +114,7 @@ Define INT_POL as 0 for active high */
 
 
 /* ------------------------- Public Function Prototypes -------------------- */
-uint32_t* AdpdDrvGetDebugInfo();
+uint32_t *AdpdDrvGetDebugInfo();
 void AdpdDrvSetIsrReadDataFromFIFO(uint8_t nEnableSet);
 static void (*gpfnADPDCallBack)();
 extern void AdpdDeviceReset();
@@ -125,7 +127,7 @@ static ADPDDrv_Operation_Slot_t gnSlotMode_B = (ADPDDrv_Operation_Slot_t) 0;
 static uint32_t gnAccessCnt[5];
 static uint8_t gnFifoLevel;
 static uint8_t gnAdpdDataSetSize_A, gnAdpdDataSetSize_B, gnChannelSize_A,
-       gnChannelSize_B, gnBytesPerSample_A,gnBytesPerSample_B;
+	       gnChannelSize_B, gnBytesPerSample_A, gnBytesPerSample_B;
 static uint16_t gnDeviceID;
 
 #ifndef NDEBUG
@@ -155,10 +157,9 @@ int16_t AdpdDrvOpenDriver()
 #ifndef NDEBUG
 	gnOverFlowCnt = 0;
 #endif  // NDEBUG
-	nRetCode = AdpdDrvRegRead(0x8, &gnDeviceID);
+	nRetCode = AdpdDrvRegRead(REG_CHIP_ID, &gnDeviceID);
 	nRetCode |= SetAdpdIdleMode();
 	Init();
-	nRetCode |= AdpdDrvSetInterrupt(FIFO_INT_EN);  // Default mode
 	nRetCode |= SetInterruptControl();
 	return nRetCode;
 }
@@ -193,14 +194,13 @@ int16_t AdpdDrvRegWrite(uint16_t nAddr, uint16_t nRegValue)
 
 #ifdef ADPD_SPI
 	uint8_t pTxData[3];
-	pTxData[0] = (anI2cData[0] << 1 ) | ADPD_SPI_WRITE
-	             ;             // To set the last bit high for write operation
+	pTxData[0] = (anI2cData[0] << 1) | ADPD_SPI_WRITE;
+		// To set the last bit high for write operation
 	pTxData[1] = anI2cData[1];
 	pTxData[2] = anI2cData[2];
 
-	if (ADPD_SPI_Transmit(pTxData, 3)!= ADI_HAL_OK) {
+	if (ADPD_SPI_Transmit(pTxData, 3)!= ADI_HAL_OK)
 		return ADPDDrv_ERROR;
-	}
 #else
 
 	/**
@@ -216,9 +216,8 @@ int16_t AdpdDrvRegWrite(uint16_t nAddr, uint16_t nRegValue)
 	    ADPD_I2C_Transmit() should be implemented in such a way that it transmits
 	    the data from anI2cData buffer of size specified in the second argument.
 	*/
-	if (ADPD_I2C_Transmit((uint8_t *) anI2cData, 3) != ADI_HAL_OK) {
+	if (ADPD_I2C_Transmit((uint8_t *)anI2cData, 3) != ADI_HAL_OK)
 		return ADPDDrv_ERROR;
-	}
 #endif //ADPD_SPI
 	return ADPDDrv_SUCCESS;
 }
@@ -236,12 +235,11 @@ int16_t AdpdDrvRegRead(uint16_t nAddr, uint16_t *pnData)
 
 #ifdef ADPD_SPI
 	uint8_t pTxData[1];
-	pTxData[0] = ( nRegAddr << 1) |
-	             ADPD_SPI_READ;  //   reset the last bit for read operation
+	pTxData[0] = (nRegAddr << 1) |
+		      ADPD_SPI_READ;  //   reset the last bit for read operation
 
-	if (ADPD_SPI_Receive(pTxData, anRxData, 1, 2)!= ADI_HAL_OK) {
+	if (ADPD_SPI_Receive(pTxData, anRxData, 1, 2) != ADI_HAL_OK)
 		return ADPDDrv_ERROR;
-	}
 #else
 
 	/**
@@ -255,9 +253,8 @@ int16_t AdpdDrvRegRead(uint16_t nAddr, uint16_t *pnData)
 	    specified by the address in the second argument. The received data will
 	    be of size specified by 3rd argument.
 	*/
-	if (ADPD_I2C_TxRx(&nRegAddr, (uint8_t *) anRxData, 2) != ADI_HAL_OK) {
+	if (ADPD_I2C_TxRx(&nRegAddr, (uint8_t *)anRxData, 2) != ADI_HAL_OK)
 		return ADPDDrv_ERROR;
-	}
 #endif  //ADPD_SPI
 
 	*pnData = (anRxData[0] << 8) + anRxData[1];
@@ -281,14 +278,28 @@ int16_t AdpdDrvSetOperationMode(uint8_t nOpMode)
 	} else if (nOpMode == ADPDDrv_MODE_PAUSE) {
 		nRetCode = AdpdDrvRegWrite(REG_OP_MODE, OP_PAUSE_MODE);    // set Pause
 	} else if (nOpMode == ADPDDrv_MODE_SAMPLE) {
+		nRetCode |= AdpdDrvSetInterrupt(FIFO_INT_EN);  // FIFO interrupt mode
 		nRetCode = AdpdDrvRegWrite(REG_I2CS_CTL_MATCH,
-		                           (((gnAdpdFifoWaterMark * gnAdpdDataSetSize) - 1) << 7));
+					   (((gnAdpdFifoWaterMark *
+					      gnAdpdDataSetSize) - 1) << 7));
 		nRetCode |= AdpdDrvRegWrite(REG_OP_MODE, OP_PAUSE_MODE);  // set Pause
 		// enable FIFO clock
 		nRetCode |= AdpdDrvRegWrite(REG_FIFO_CLK, FIFO_CLK_EN);
 #ifdef CLR_HFIFO_SAMPLE
 		nRetCode |= AdpdDrvRegRead(REG_DATA_BUFFER,
-		                           &nTemp); // Read 2 bytes dummy FIFO data
+					   &nTemp); // Read 2 bytes dummy FIFO data
+		nRetCode |= AdpdDrvRegWrite(REG_INT_STATUS, FIFO_CLR | IRQ_CLR_ALL);
+#endif
+		// set GO
+		nRetCode |= AdpdDrvRegWrite(REG_OP_MODE, OP_RUN_MODE);
+	} else if (nOpMode == ADPDDrv_MODE_PROXIMITY) {
+		nRetCode |= AdpdDrvSetInterrupt(PROX_ON1_INT_EN);  // Proximity ON1 interrupt mode
+		nRetCode |= AdpdDrvRegWrite(REG_OP_MODE, OP_PAUSE_MODE);  // set Pause
+		// enable FIFO clock
+		nRetCode |= AdpdDrvRegWrite(REG_FIFO_CLK, FIFO_CLK_EN);
+#ifdef CLR_HFIFO_SAMPLE
+		nRetCode |= AdpdDrvRegRead(REG_DATA_BUFFER,
+					   &nTemp); // Read 2 bytes dummy FIFO data
 		nRetCode |= AdpdDrvRegWrite(REG_INT_STATUS, FIFO_CLR | IRQ_CLR_ALL);
 #endif
 		// set GO
@@ -299,9 +310,8 @@ int16_t AdpdDrvSetOperationMode(uint8_t nOpMode)
 	if (gnDeviceID != DEVICE_ID_516)
 		// nRetCode |= AdpdDrvRegWrite(REG_FIFO_CLK, FIFO_CLK_DIS);   // clock OFF
 		nRetCode |= AdpdDrvRegWrite(REG_TEST_PD, 0x0242);
-	for (nLoopCnt = 0; nLoopCnt < 5; nLoopCnt++) {
+	for (nLoopCnt = 0; nLoopCnt < 5; nLoopCnt++)
 		gnAccessCnt[nLoopCnt] = 0;
-	}
 	return nRetCode;
 }
 
@@ -314,10 +324,15 @@ int16_t AdpdDrvSetOperationMode(uint8_t nOpMode)
   */
 int16_t AdpdDrvSetSlot(uint8_t nSlotA, uint8_t nSlotB)
 {
-	uint16_t nRegValue;
-	if (AdpdDrvRegRead(REG_OP_MODE_CFG, &nRegValue) != ADPDDrv_SUCCESS) {
+	uint16_t nRegValue, nDIRegValue, nRegAfeTrimA, nRegAfeTrimB;
+	if (AdpdDrvRegRead(REG_OP_MODE_CFG, &nRegValue) != ADPDDrv_SUCCESS)
 		return ADPDDrv_ERROR;
-	}
+	if (AdpdDrvRegRead(REG_CALIBRATE, &nDIRegValue) != ADPDDrv_SUCCESS)
+		return ADPDDrv_ERROR;
+	if (AdpdDrvRegRead(REG_AFE_TRIM_A, &nRegAfeTrimA) != ADPDDrv_SUCCESS)
+		return ADPDDrv_ERROR;
+	if (AdpdDrvRegRead(REG_AFE_TRIM_B, &nRegAfeTrimB) != ADPDDrv_SUCCESS)
+		return ADPDDrv_ERROR;
 	gnSlotMode_A = (ADPDDrv_Operation_Slot_t)nSlotA;
 	gnSlotMode_B = (ADPDDrv_Operation_Slot_t)nSlotB;
 	nRegValue &= SLOT_MASK;
@@ -325,33 +340,53 @@ int16_t AdpdDrvSetSlot(uint8_t nSlotA, uint8_t nSlotB)
 		gnAdpdDataSetSize_A = 0;
 		gnChannelSize_A = 0;
 		gnBytesPerSample_A = 0;
+	} else if (nSlotA == ADPDDrv_PROXIMITY) {
+		nRegValue |= PROX_A_MODE;
+#ifdef PROX_SAMPLE_ENABLE // Check for sample enabling in Proximity mode
+		nRegValue |= PROX_SAMPLE_ENABLE;
+#endif
+		nRegValue &= ~RDOUT_MODE_EN;
+		gnAdpdDataSetSize_A = PROX_A_DATA_SIZE;
+		gnChannelSize_A = 1;
+		gnBytesPerSample_A = 2;
+	} else if (nSlotA == ADPDDrv_GESTURE) {
+		nRegValue |= GEST_A_MODE;
+		gnAdpdDataSetSize_A = GEST_A_DATA_SIZE;
+		gnChannelSize_A = 2;
+		gnBytesPerSample_A = 2;
 	} else if (nSlotA == ADPDDrv_4CH_16) {
 		nRegValue |= SLOT_A_MODE;
+		nRegValue |= RDOUT_MODE_EN;
 		gnAdpdDataSetSize_A = SLOT_A_DATA_SIZE;
 		gnChannelSize_A = 4;
 		gnBytesPerSample_A = 2;
 	} else if (nSlotA == ADPDDrv_4CH_32) {
 		nRegValue |= SLOT_A_MODE_32;
+		nRegValue |= RDOUT_MODE_EN;
 		gnAdpdDataSetSize_A = SLOT_B_DATA_SIZE_32;
 		gnChannelSize_A = 4;
 		gnBytesPerSample_A = 4;
 	} else if (nSlotA == ADPDDrv_SUM_16) {
 		nRegValue |= SLOT_A_MODE_SUM16;
+		nRegValue |= RDOUT_MODE_EN;
 		gnAdpdDataSetSize_A = SLOT_B_DATA_SIZE_SUM16;
 		gnChannelSize_A = 1;
 		gnBytesPerSample_A = 2;
 	} else if (nSlotA == ADPDDrv_SUM_32) {
 		nRegValue |= SLOT_A_MODE_R4_SUM;
+		nRegValue |= RDOUT_MODE_EN;
 		gnAdpdDataSetSize_A = SLOT_A_DATA_SIZE_R4_SUM;
 		gnChannelSize_A = 1;
 		gnBytesPerSample_A = 4;
 	} else if (nSlotA == ADPDDrv_DIM1_16) {
 		nRegValue |= SLOT_A_D1_16;
+		nRegValue |= RDOUT_MODE_EN;
 		gnAdpdDataSetSize_A = SLOT_A_DATA_SIZE_D1_16;
 		gnChannelSize_A = 1;
 		gnBytesPerSample_A = 2;
 	} else if (nSlotA == ADPDDrv_DIM2_32) {
 		nRegValue |= SLOT_A_D2_32;
+		nRegValue |= RDOUT_MODE_EN;
 		gnAdpdDataSetSize_A = SLOT_A_DATA_SIZE_D2_32;
 		gnChannelSize_A = 2;
 		gnBytesPerSample_A = 4;
@@ -365,39 +400,62 @@ int16_t AdpdDrvSetSlot(uint8_t nSlotA, uint8_t nSlotB)
 		gnBytesPerSample_B = 0;
 	} else if (nSlotB == ADPDDrv_4CH_16) {
 		nRegValue |= SLOT_B_MODE;
+		nRegValue |= RDOUT_MODE_EN;
 		gnAdpdDataSetSize_B = SLOT_B_DATA_SIZE;
 		gnChannelSize_B = 4;
 		gnBytesPerSample_B = 2;
 	} else if (nSlotB == ADPDDrv_4CH_32) {
 		nRegValue |= SLOT_B_MODE_32;
+		nRegValue |= RDOUT_MODE_EN;
 		gnAdpdDataSetSize_B = SLOT_B_DATA_SIZE_32;
 		gnChannelSize_B = 4;
 		gnBytesPerSample_B = 4;
 	} else if (nSlotB == ADPDDrv_SUM_16) {
 		nRegValue |= SLOT_B_MODE_SUM16;
+		nRegValue |= RDOUT_MODE_EN;
 		gnAdpdDataSetSize_B = SLOT_B_DATA_SIZE_SUM16;
 		gnChannelSize_B = 1;
 		gnBytesPerSample_B = 2;
 	} else if (nSlotB == ADPDDrv_SUM_32) {
 		nRegValue |= SLOT_B_MODE_R4_SUM;
+		nRegValue |= RDOUT_MODE_EN;
 		gnAdpdDataSetSize_B = SLOT_B_DATA_SIZE_R4_SUM;
 		gnChannelSize_B = 1;
 		gnBytesPerSample_B = 4;
 	} else if (nSlotB == ADPDDrv_DIM1_16) {
 		nRegValue |= SLOT_B_D1_16;
+		nRegValue |= RDOUT_MODE_EN;
 		gnAdpdDataSetSize_B = SLOT_B_DATA_SIZE_D1_16;
 		gnChannelSize_B = 1;
 		gnBytesPerSample_B = 2;
 	} else if (nSlotB == ADPDDrv_DIM2_32) {
 		nRegValue |= SLOT_B_D2_32;
+		nRegValue |= RDOUT_MODE_EN;
 		gnAdpdDataSetSize_B = SLOT_B_DATA_SIZE_D2_32;
 		gnChannelSize_B = 2;
 		gnBytesPerSample_B = 4;
 	} else {
 		return ADPDDrv_ERROR;
 	}
+	if (nSlotA & DISLOTMODEMASK) {
+		nDIRegValue |= DIGITAL_INTEGRATE_A_EN;
+		nRegAfeTrimA = (nRegAfeTrimA & AFE_DIG_INT_MASK) | AFE_DIG_INT_MODE;
+	} else {
+		nDIRegValue &= (~DIGITAL_INTEGRATE_A_EN);
+		nRegAfeTrimA = (nRegAfeTrimA & AFE_DIG_INT_MASK) | AFE_NORMAL_MODE;
+	}
+	if (nSlotB & DISLOTMODEMASK) {
+		nDIRegValue |= DIGITAL_INTEGRATE_B_EN;
+		nRegAfeTrimB = (nRegAfeTrimB & AFE_DIG_INT_MASK) | AFE_DIG_INT_MODE;
+	} else {
+		nDIRegValue &= (~DIGITAL_INTEGRATE_B_EN);
+		nRegAfeTrimB = (nRegAfeTrimB & AFE_DIG_INT_MASK) | AFE_NORMAL_MODE;
+	}
 	AdpdDrvRegWrite(REG_OP_MODE_CFG, nRegValue);
 	gnAdpdDataSetSize = gnAdpdDataSetSize_A + gnAdpdDataSetSize_B;
+	AdpdDrvRegWrite(REG_CALIBRATE, nDIRegValue);
+	AdpdDrvRegWrite(REG_AFE_TRIM_A, nRegAfeTrimA);
+	AdpdDrvRegWrite(REG_AFE_TRIM_B, nRegAfeTrimB);
 	return ADPDDrv_SUCCESS;
 }
 
@@ -420,9 +478,8 @@ void AdpdDrvDataReadyCallback(void (*pfADPDDataReady)())
 
 void AdpdISR()
 {
-	if (gpfnADPDCallBack != NULL) {
+	if (gpfnADPDCallBack != NULL)
 		(*gpfnADPDCallBack)();
-	}
 	gnAccessCnt[0]++;
 }
 
@@ -430,7 +487,7 @@ void AdpdISR()
   * @param  None
   * @return uint32_t* Debug info pointer
   */
-uint32_t* AdpdDrvGetDebugInfo()
+uint32_t *AdpdDrvGetDebugInfo()
 {
 	return gnAccessCnt;
 }
@@ -446,7 +503,8 @@ int16_t AdpdDrvSetParameter(AdpdCommandStruct eCommand, uint16_t nValue)
 	int16_t nRetCode = ADPDDrv_SUCCESS;
 	if (eCommand == ADPD_WATERMARKING) {
 		nRetCode = AdpdDrvRegWrite(REG_I2CS_CTL_MATCH,
-		                           (((nValue * gnAdpdDataSetSize) - 1) << 7));
+					   (((nValue * gnAdpdDataSetSize) -
+					      1) << 7));
 		gnAdpdFifoWaterMark = nValue;
 	} else {
 		return ADPDDrv_ERROR;
@@ -468,19 +526,17 @@ int16_t AdpdDrvGetParameter(AdpdCommandStruct eCommand, uint16_t *pnValue)
 
 	if (eCommand == ADPD_WATERMARKING) {
 		*pnValue = gnAdpdFifoWaterMark;
-
 	} else if (eCommand == ADPD_FIFOLEVEL) {
 		nRetCode |= AdpdDrvRegRead(REG_INT_STATUS, &nStatData);
+		nRetCode |= AdpdDrvRegWrite(REG_INT_STATUS, nStatData);
 		gnFifoLevel = nStatData >> 8;
 		*pnValue = gnFifoLevel;
-
 	} else if (eCommand == ADPD_TIMEGAP) {
 		nRetCode |= AdpdDrvRegRead(REG_SAMPLING_FREQ, &nRegValue1);
 		nRetCode |= AdpdDrvRegRead(REG_DEC_MODE, &nRegValue2);
 		nRegValue2 = (nRegValue2 & 0xF0) >> 4;
 		nRegValue2 = 1 << nRegValue2;
 		*pnValue = ((nRegValue1 * nRegValue2) >> 3);
-
 	} else if (eCommand == ADPD_DATASIZEA) {
 		*pnValue = gnAdpdDataSetSize_A;
 	} else if (eCommand == ADPD_DATASIZEB) {
@@ -527,9 +583,8 @@ int16_t AdpdDrvReadFifoData(uint8_t *pnData, uint16_t nDataSetSize)
 	uint8_t pTxData[1];
 #endif //ADPD_SPI
 #ifndef NDEBUG
-	if (gnFifoLevel >= 128) {
+	if (gnFifoLevel >= 128)
 		gnOverFlowCnt++;
-	}
 #endif  // NDEBUG
 	if (gnDeviceID != DEVICE_ID_516) {
 		if (gnFifoLevel >= nDataSetSize) {
@@ -546,9 +601,9 @@ int16_t AdpdDrvReadFifoData(uint8_t *pnData, uint16_t nDataSetSize)
 
 #ifdef ADPD_SPI
 		pTxData[0] = (nAddr << 1) | ADPD_SPI_READ;
-		if (ADPD_SPI_Receive(pTxData, pnData, 1, nDataSetSize)!= ADI_HAL_OK) {
+		if (ADPD_SPI_Receive(pTxData, pnData, 1, nDataSetSize) !=
+				     ADI_HAL_OK)
 			return ADPDDrv_ERROR;
-		}
 #else
 
 		/**
@@ -562,18 +617,15 @@ int16_t AdpdDrvReadFifoData(uint8_t *pnData, uint16_t nDataSetSize)
 		    specified by the address in the second argument. The received data will
 		    be of size gnAdpdDataSetSize.
 		*/
-		if (ADPD_I2C_TxRx((uint8_t*) &nAddr, pnData,
-		                  nDataSetSize) != ADI_HAL_OK) {
+		if (ADPD_I2C_TxRx((uint8_t *) &nAddr, pnData,
+		                  nDataSetSize) != ADI_HAL_OK)
 			return ADPDDrv_ERROR;
-		}
 #endif // ADPD_SPI
 	}
-	if (gnDeviceID != DEVICE_ID_516) {
-		if (nGetFifoData == 1) {
+	if (gnDeviceID != DEVICE_ID_516)
+		if (nGetFifoData == 1)
 			// AdpdDrvRegWrite(REG_FIFO_CLK, FIFO_CLK_DIS);  // disable FIFO clock
 			AdpdDrvRegWrite(REG_TEST_PD, 0x0242);
-		}
-	}
 	return ADPDDrv_SUCCESS;
 }
 
@@ -596,17 +648,14 @@ int16_t AdpdDrvEfuseRead(uint16_t *pReg_Values, uint8_t nSize)
 	AdpdDrvRegRead(REG_EFUSE_STATUS0, &nReg_Value);
 	AdpdDrvRegRead(REG_EFUSE_STATUS0, &nReg_Value);
 	nRegLoopCount = 0;
-	if ((nReg_Value & 0x7) == 0x4) {
-		for (; nRegLoopCount < nSize; nRegLoopCount++) {
+	if ((nReg_Value & 0x7) == 0x4)
+		for (; nRegLoopCount < nSize; nRegLoopCount++)
 			AdpdDrvRegRead(0x70 + nRegLoopCount, &pReg_Values[nRegLoopCount]);
-		}
-	}
 	AdpdDrvRegWrite(REG_EFUSE_CTRL, 0x0);
 	AdpdDrvRegWrite(REG_OSC32K, clk32K);
 	AdpdDrvRegWrite(REG_FIFO_CLK, clkfifo);
-	if (nRegLoopCount == 0) {
+	if (nRegLoopCount == 0)
 		return ADPDDrv_ERROR;
-	}
 	return ADPDDrv_SUCCESS;
 }
 
@@ -628,23 +677,23 @@ int16_t AdpdDrvEfuseModuleTypeRead(uint16_t *moduletype)
   * @param  None
   * @return uint8_t* Name of the module
   */
-uint8_t* AdpdDrvEfuseModuleNameRead()
+uint8_t *AdpdDrvEfuseModuleNameRead()
 {
 	uint16_t moduletype;
 	AdpdDrvEfuseModuleTypeRead(&moduletype);
 	switch (moduletype) {
 	case 1:
-		return ("153GGRI");
+		return "153GGRI";
 	case 2:
-		return ("163URI");
+		return "163URI";
 	case 3:
-		return ("163URIR2");
+		return "163URIR2";
 	case 4:
-		return ("163URIR3");
+		return "163URIR3";
 	case 5:
-		return ("174GGI");
+		return "174GGI";
 	default:
-		return ("153GGRI");  // unknown device is detected
+		return "153GGRI";  // unknown device is detected
 		// or efuse not programmed
 	}
 }
@@ -684,7 +733,7 @@ int16_t AdpdDrvSetLedCurrent(uint8_t nLedCurrent, AdpdLedId nLedId)
 	uint16_t nAdpdRxData;
 	uint16_t nAdpdTxData;
 
-	nReg = REG_LED1_DRV + (nLedId -1);
+	nReg = REG_LED1_DRV + (nLedId - 1);
 
 	if (!((nReg == REG_LED1_DRV) || (nReg == REG_LED2_DRV))) {
 		return ADPDDrv_ERROR;

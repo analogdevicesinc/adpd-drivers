@@ -2,8 +2,8 @@
 ******************************************************************************
 * @file     AdpdDrv.h
 * @author   ADI
-* @version  V2.0
-* @date     20-July-2016
+* @version  V2.1
+* @date     16-December-2016
 * @brief    Include file for the ADPD device driver
 ******************************************************************************
 */
@@ -238,7 +238,8 @@ typedef uint8_t AdpdSlotId;
 // IRQ related
 #define FIFO_CLR                0x8000
 #define FIFO_INT_EN             0xC0FF
-#define IRQ_CLR_ALL             0x00FF
+#define PROX_ON1_INT_EN         0x01FE
+#define IRQ_CLR_ALL             0x01FF
 #define IRQ_CLR_FIFO            0x8000
 #define IRQ_MASK_RAW            0x0060
 #define IRQ_RAW_AB_EN           0xC19F
@@ -246,10 +247,20 @@ typedef uint8_t AdpdSlotId;
 #define IRQ_RAW_B_EN            0xC1BF
 
 // Slot related
+#define RDOUT_MODE_EN           0x2000
+#define FIFO_PREVENT_EN         0x1000
+
+#define PROX_A_DATA_SIZE        0x2
+#define PROX_A_MODE             0x0006
+#define PROX_SAMPLE_ENABLE      0x0800
+
+#define GEST_A_DATA_SIZE        0x4
+#define GEST_A_MODE             0x000B
+
 #define SLOT_A_DATA_SIZE        0x8
 #define SLOT_B_DATA_SIZE        0x8
 #define SLOT_AB_DATA_SIZE       0x10
-#define SLOT_MASK               0x3000
+#define SLOT_MASK               0x3E00
 #define SLOT_A_MODE             0x0011
 #define SLOT_B_MODE             0x0120
 #define SLOT_AB_MODE            0x0131
@@ -329,6 +340,16 @@ typedef uint8_t AdpdSlotId;
 /* ADC OFFSET */
 #define ADC_MASK                       0xC000
 
+/* Digital Integration */
+#define DISLOTMODEMASK          0xC0
+
+#define DIGITAL_INTEGRATE_A_EN      0x1000
+#define DIGITAL_INTEGRATE_B_EN      0x2000
+#define DIGITAL_INTEGRATE_MASK      0xCFFF
+
+#define AFE_DIG_INT_MASK            0x00FF
+#define AFE_NORMAL_MODE             0x1C00
+#define AFE_DIG_INT_MODE            0x1D00
 /* Adpd control functions */
 void Init(void);
 int16_t AdpdDrvSoftReset(void);

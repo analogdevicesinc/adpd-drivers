@@ -2,8 +2,8 @@
     ***************************************************************************
       @file         example107.c
       @author       ADI
-      @version      V2.0.0
-      @date         15-July-2016
+      @version      V2.0.1
+      @date         19-December-2016
       @brief        Sample application to use ADI ADPD107 driver.
 
 */
@@ -63,7 +63,10 @@
 #define debug(M, ...)  {_SBZ[0] = 0; \
                         snprintf(_SBZ, BUF_SIZE, "" M "", ##__VA_ARGS__); \
                         adi_printf("%s", _SBZ);}
-
+/*    Uncomment  the following macro to set the sensor in sample mode */
+//#define ADPD_SAMPLE_MODE
+/*    Uncomment  the following macro to set the sensor in proximity mode */
+#define ADPD_PROXIMITY_MODE
 
 /* Private define ---------------------------------------------------------- */
 uint32_t gnAdpdTimeCurVal = 0;
@@ -73,12 +76,9 @@ uint8_t gnAdpdDataReady = 0;
 #define BUF_SIZE (256)
 char _SBZ[BUF_SIZE]; // used by 'debug'
 
-
 uint32_t dcfg_org_107[] = {
-	0x00060000,
-	0x00113120,
+#ifdef ADPD_SAMPLE_MODE
 	0x00120050,
-	0x00140557,
 	0x00150110,
 	0x00181F00,
 	0x00191F00,
@@ -88,13 +88,24 @@ uint32_t dcfg_org_107[] = {
 	0x001F1F00,
 	0x00201F00,
 	0x00211F00,
+	0x00340000,
+#elif defined(ADPD_PROXIMITY_MODE)
+	0x00130320,
+	0x00150000,
+	0x002A0600,
+	0x002F8000,
+	0x00330113,
+	0x00340200,
+#endif
+	0x00060000,
+	0x00113120,
+	0x00140555,
 	0x00223030,
 	0x00233030,
 	0x00243030,
 	0x0025630C,
 	0x00300219,
 	0x00310113,
-	0x00340000,
 	0x00350219,
 	0x00360113,
 	0x00391A08,
@@ -189,11 +200,10 @@ void AdpdFifoCallBack(void)
 */
 void main(void)
 {
-
 	/* Hardware initializations */
 	HW_Global_Init();
 
-	debug("Start");
+	debug("Start\r\n");
 
 	/* Register data ready callback */
 	AdpdDrvDataReadyCallback(AdpdFifoCallBack);
@@ -213,9 +223,13 @@ void main(void)
 	AdpdDrvRegWrite(0x004B, 0x2695);
 	AdpdDrvRegWrite(0x004D, 0x4272);
 
+#ifdef ADPD_SAMPLE_MODE
 	/* Driver bring up with 16-bits output data and 8 channel mode */
 	AdpdDriverBringUp(ADPDDrv_4CH_16, ADPDDrv_4CH_16);
-
+#elif  defined(ADPD_PROXIMITY_MODE)
+	/* Driver bring up with proximity mode */
+	AdpdDriverBringUp(ADPDDrv_PROXIMITY, ADPDDrv_SLOT_OFF);
+#endif
 }
 
 /**
@@ -319,15 +333,23 @@ void AdpdDriverBringUp(uint8_t nSlotA, uint8_t nSlotB)
 {
 	uint32_t LoopCnt;
 	uint16_t nRetValue = 0;
-	uint16_t nAdpdFifoLevelSize = 0, nAdpdDataSetSize = 16;
+	uint16_t nAdpdFifoLevelSize = 0, nAdpdDataSetSize;
 	uint8_t value[16] = {0};
+    uint8_t nLoopLim;
 
 	/* Set the slot modes for slot A and slot B */
 	AdpdDrvSetSlot(nSlotA, nSlotB);
 
-	/* Set the device operation to sample mode. The data can be collected now */
+#ifdef ADPD_SAMPLE_MODE
+        /* Set the device operation to sample mode. The data can be collected now */
 	AdpdDrvSetOperationMode(ADPDDrv_MODE_SAMPLE);
+        nLoopLim = nAdpdDataSetSize = 16;
+#elif defined(ADPD_PROXIMITY_MODE)
+        /* Set the device operation to proximity mode. The data can be collected now */
+        AdpdDrvSetOperationMode(ADPDDrv_MODE_PROXIMITY);
+        nLoopLim = nAdpdDataSetSize = 2;
 
+#endif
 	while (1) {
 		/* Check if the data is ready */
 		if(gnAdpdDataReady)  {
@@ -338,7 +360,7 @@ void AdpdDriverBringUp(uint8_t nSlotA, uint8_t nSlotB)
 			while (nAdpdFifoLevelSize >= nAdpdDataSetSize) {
 				nRetValue = AdpdDrvReadFifoData(&value[0], nAdpdDataSetSize);
 				if (nRetValue == ADPDDrv_SUCCESS) {
-					for (LoopCnt = 0; LoopCnt < 16; LoopCnt += 2)
+					for (LoopCnt = 0; LoopCnt < nLoopLim; LoopCnt += 2)
 						/* Byte swapping is needed to print ADPD data in proper format */
 						debug("%u ", (value[LoopCnt] << 8) | value[LoopCnt + 1]);
 					debug("%u\r\n", gnAdpdTimeCurVal);
