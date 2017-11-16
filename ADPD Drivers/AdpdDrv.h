@@ -1,9 +1,10 @@
+
 /**
 ******************************************************************************
 * @file     AdpdDrv.h
 * @author   ADI
-* @version  V2.1
-* @date     16-December-2016
+* @version  V2.2
+* @date     13-November-2017
 * @brief    Include file for the ADPD device driver
 ******************************************************************************
 */
@@ -76,6 +77,7 @@ typedef enum {
 
 typedef enum {
 	ADPDDrv_SLOT_OFF = 0x00,
+	ADPDDrv_GESTURE = 0x02,
 	ADPDDrv_PROXIMITY = 0x08,
 
 	ADPDDrv_4CH_16  = 0x01,
@@ -88,6 +90,14 @@ typedef enum {
 	ADPDDrv_DIM2_32 = 0x84,
 
 } ADPDDrv_Operation_Slot_t;
+
+typedef enum {
+	MODULE_153GGRI = 1,
+	MODULE_163URI = 2,
+	MODULE_163URIR2 = 3,
+	MODULE_163URIR3 = 4,
+	MODULE_174GGI = 5,
+} ADPDDrv_Efuse_t;
 //
 //
 //      /* ******* */
@@ -363,9 +373,8 @@ int16_t AdpdDrvRegWrite(uint16_t nAddr, uint16_t nRegValue);
 int16_t AdpdDrvSetSlot(uint8_t nSlotA, uint8_t nSlotB);
 int16_t AdpdDrvSetOperationMode(uint8_t nOpMode);
 /* Adpd read data from hardware fifo */
-//int16_t AdpdDrvReadFifoData(uint8_t *pnData, uint16_t nDataSetSize);
 int16_t AdpdDrvReadFifoData(uint8_t *pnData, uint16_t nDataSetSize);
-
+void AdpdISR();
 int16_t AdpdDrvSetParameter(AdpdCommandStruct eCommand, uint16_t nValue);
 int16_t AdpdDrvGetParameter(AdpdCommandStruct eCommand, uint16_t *pnValue);
 /* Adpd register interrupt callback */

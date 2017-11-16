@@ -1,9 +1,10 @@
+
 /**
     ***************************************************************************
     * @file     AdpdDrv.c
     * @author   ADI
-    * @version  V2.1
-    * @date     19-December-2016
+    * @version  V2.2
+    * @date     13-November-2017
     * @brief    Reference design device driver to access ADI ADPD chip.
     ***************************************************************************
 */
@@ -81,6 +82,8 @@
 *   New functions and API added                                               *
 * Version 2.1, Dec 16, 2016                                                   *
 *   Added Proximity mode support                                              *
+* Version 2.2, November 13, 2017                                              *
+*   Added Gesture Enum in the AdpdDrv.h file                                  *
 ******************************************************************************/
 
 /* ------------------------- Includes -------------------------------------- */
@@ -171,9 +174,9 @@ int16_t AdpdDrvOpenDriver()
   */
 int16_t AdpdDrvCloseDriver(void)
 {
-#ifndef NDEBUG
+#ifdef ADI_PRINT
 	debug("FIFO Full = %i\r\n", gnOverFlowCnt);
-#endif  // NDEBUG
+#endif  // ADI_PRINT
 	return SetAdpdIdleMode();
 }
 
@@ -675,25 +678,25 @@ int16_t AdpdDrvEfuseModuleTypeRead(uint16_t *moduletype)
 /** @brief Read Efuse module names
   *
   * @param  None
-  * @return uint8_t* Name of the module
+  * @return ADPDDrv_Efuse_t Name of the module
   */
-uint8_t *AdpdDrvEfuseModuleNameRead()
+ADPDDrv_Efuse_t AdpdDrvEfuseModuleNameRead()
 {
 	uint16_t moduletype;
 	AdpdDrvEfuseModuleTypeRead(&moduletype);
 	switch (moduletype) {
 	case 1:
-		return "153GGRI";
+		return MODULE_153GGRI;
 	case 2:
-		return "163URI";
+		return MODULE_163URI;
 	case 3:
-		return "163URIR2";
+		return MODULE_163URIR2;
 	case 4:
-		return "163URIR3";
+		return MODULE_163URIR3;
 	case 5:
-		return "174GGI";
+		return MODULE_174GGI;
 	default:
-		return "153GGRI";  // unknown device is detected
+		return MODULE_153GGRI;  // unknown device is detected
 		// or efuse not programmed
 	}
 }
