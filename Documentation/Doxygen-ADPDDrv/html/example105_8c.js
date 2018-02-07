@@ -1,0 +1,27 @@
+var example105_8c =
+[
+    [ "ADPD_PROXIMITY_MODE", "example105_8c.html#a38137007824ba4eef5b0631cb2bcf9f1", null ],
+    [ "BUF_SIZE", "example105_8c.html#a6821bafc3c88dfb2e433a095df9940c6", null ],
+    [ "debug", "example105_8c.html#adaa78f48cc5f16815291697278ab4ab5", null ],
+    [ "ADP_init", "example105_8c.html#a5f225511633b65fc94b17d0d27af405b", null ],
+    [ "AdpdDriverBringUp", "example105_8c.html#affb31a2e2b175100b7b504ba83f096ff", null ],
+    [ "AdpdFifoCallBack", "example105_8c.html#aced97e8e3d8a54917fa495cc64c6eb15", null ],
+    [ "AdpdRxBufferInsertData", "example105_8c.html#a10af5ada05a0f62a4ce74a954f01e127", null ],
+    [ "AppReadAdpdDataBuffer", "example105_8c.html#a333f3d129d1911f3a26dd4535ac57bf0", null ],
+    [ "GPIO_Init", "example105_8c.html#a825a38d3f87d03f011520ff66261fe74", null ],
+    [ "HAL_Init", "example105_8c.html#a0c24e2b1e439cc2870fd9be6a7882006", null ],
+    [ "HW_Global_Init", "example105_8c.html#a37328f668435d06b66def812bc8026f8", null ],
+    [ "I2C_Init", "example105_8c.html#a8ccbe0d3dceb6c6839e7bf224cfad689", null ],
+    [ "LoadDefaultConfig", "example105_8c.html#ad61262694af4af06f1d8c54067be2f87", null ],
+    [ "main", "example105_8c.html#a6288eba0f8e8ad3ab1544ad731eb7667", null ],
+    [ "MCU_HAL_Delay", "example105_8c.html#a4c8d8f40fc57410edaa49f70935a3b5d", null ],
+    [ "MCU_HAL_GetTick", "example105_8c.html#acf15d7992950c7b748707c6123287685", null ],
+    [ "SystemClock_Config", "example105_8c.html#a7a74c32524082f5f5712a03b855ae225", null ],
+    [ "TIM_Init", "example105_8c.html#af0f382121d717742fc5b30669f09b823", null ],
+    [ "UART_Init", "example105_8c.html#ad7d9735eb6d12d58232f616020798946", null ],
+    [ "VerifyDefaultConfig", "example105_8c.html#a555e18847cfe0b5890549a3aecf165bb", null ],
+    [ "_SBZ", "example105_8c.html#ab023824a425abb32326a40a8fb227838", null ],
+    [ "dcfg_org_105", "example105_8c.html#a037c450b32ca9523897b5d97a020b45f", null ],
+    [ "gnAdpdDataReady", "example105_8c.html#a76e6878ae91310a242473f670e573856", null ],
+    [ "gnAdpdTimeCurVal", "example105_8c.html#ab24ec0ff2a076753b5debea24e2bc00c", null ]
+];
