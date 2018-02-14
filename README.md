@@ -9,4 +9,7 @@ In order to get started we suggest following steps:
 
 3. The driver source and the header files are present in the "ADPD Drivers" directory.
 
-4. The example codes for ADPD103/105/107/108 can be found in the "Examples" directory.
+4. By default, the driver works for I2C based devices. Uncomment line number 159 in AdpdDrv.h to define ADPD_SPI macro for SPI based devices.
+
+5. The example codes for ADPD103/105/107/108 can be found in the "Examples" directory.
+
