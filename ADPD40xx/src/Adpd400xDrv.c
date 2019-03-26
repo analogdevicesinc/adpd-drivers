@@ -128,19 +128,20 @@ static int16_t _Adpd400xDrvSelComMode();
 */
 int16_t Adpd400xDrvOpenDriver() {
   int16_t nRetCode = ADPD400xDrv_SUCCESS;
-  uint8_t txData[3] = {0x0f, 0x80, 0x00};
-  
+    
   if (nAdpd400xCommMode == ADPD400x_UNKNOWN_BUS)
     if (_Adpd400xDrvSelComMode() != ADPD400xDrv_SUCCESS)
       return ADPD400xDrv_ERROR;
 
   nRetCode = _Adpd400xDrvSetIdleMode();
   if(nAdpd400xCommMode == ADPD400x_I2C_BUS) {
+	uint8_t txData[3] = {0x0f, 0x80, 0x00};
     if (Adpd400x_I2C_Transmit(txData, 3) != ADI_HAL_OK) {
       return ADPD400xDrv_ERROR;
     }
   } else {
-    if (Adpd400x_SPI_Transmit(txData, 3)!= ADI_HAL_OK) {
+	uint8_t txData[4] = {0x00, 0x1f, 0x80, 0x00};
+    if (Adpd400x_SPI_Transmit(txData, 4)!= ADI_HAL_OK) {
       return ADPD400xDrv_ERROR;
     }
   }
@@ -310,10 +311,9 @@ int16_t Adpd400xDrvRegRead32B(uint16_t nAddr, uint32_t *pnData) {
   uint8_t anRxData[4];
   uint8_t txData[2];
   uint16_t i = 0;
-  uint16_t nTmpAddr = 0;
 
   if (nAdpd400xCommMode == ADPD400x_SPI_BUS) {
-    nTmpAddr = (nAddr << 1 ) & ADPD400x_SPI_READ; // To set the last bit low for read operation
+    uint16_t nTmpAddr = (nAddr << 1 ) & ADPD400x_SPI_READ; // To set the last bit low for read operation
 
     txData[i++] = (uint8_t)(nTmpAddr >> 8);
     txData[i++] = (uint8_t)(nTmpAddr);
@@ -654,7 +654,6 @@ int16_t Adpd400xDrvGetParameter(Adpd400xCommandStruct_t eCommand, uint8_t nPar, 
 */
 int16_t Adpd400xDrvReadFifoData(uint8_t *pnData, uint16_t nDataSetSize) {
   uint8_t nAddr;
-  uint16_t nTmpAddr = 0;
   uint8_t txData[2];
   uint8_t i = 0;
   
@@ -671,7 +670,7 @@ int16_t Adpd400xDrvReadFifoData(uint8_t *pnData, uint16_t nDataSetSize) {
     switch(nAdpd400xCommMode){
     case ADPD400x_SPI_BUS:
       i = 0;
-      nTmpAddr = (nAddr << 1 ) & ADPD400x_SPI_READ; // To set the last bit low for read operation
+      uint16_t nTmpAddr = (nAddr << 1 ) & ADPD400x_SPI_READ; // To set the last bit low for read operation
       txData[i++] = (uint8_t)(nTmpAddr >> 8);
       txData[i++] = (uint8_t)(nTmpAddr);
       
@@ -729,7 +728,6 @@ int16_t Adpd400xDrvReadRegData(uint32_t *pnData, ADPD400xDrv_SlotNum_t nSlotNum,
   uint8_t txData[2];
   uint16_t nAddr, i = 0;
   uint16_t nIntStatus;
-  uint16_t nTmpAddr = 0;
 
   Adpd400xDrvRegRead(ADPD400x_REG_INT_STATUS_DATA, &nIntStatus);
 
@@ -738,7 +736,7 @@ int16_t Adpd400xDrvReadRegData(uint32_t *pnData, ADPD400xDrv_SlotNum_t nSlotNum,
     nAddr = ADPD400x_REG_SIGNAL1_L_A + (nSlotNum << 3) + (nSignalDark << 2) + (nChNum << 1);
 
     if (nAdpd400xCommMode == ADPD400x_SPI_BUS) {
-      nTmpAddr = (nAddr << 1 ) & ADPD400x_SPI_READ; // To set the last bit low for read operation
+      uint16_t nTmpAddr = (nAddr << 1 ) & ADPD400x_SPI_READ; // To set the last bit low for read operation
 
       txData[i++] = (uint8_t)(nTmpAddr >> 8);
       txData[i++] = (uint8_t)(nTmpAddr);
@@ -808,7 +806,7 @@ int16_t Adpd400xDrvReadRegData(uint32_t *pnData, ADPD400xDrv_SlotNum_t nSlotNum,
 int16_t Adpd400xDrvSetLedCurrent(uint16_t nLedCurrent, ADPD400xDrv_LedId_t nLedId, ADPD400xDrv_SlotNum_t nSlotNum) {
   int16_t nRetCode = ADPD400xDrv_SUCCESS;
   uint16_t nMask;
-  uint16_t nReg;
+  uint8_t nReg;
   uint8_t nBitPos;
   uint16_t nAdpd400xData;
 
@@ -821,15 +819,9 @@ int16_t Adpd400xDrvSetLedCurrent(uint16_t nLedCurrent, ADPD400xDrv_LedId_t nLedI
   if (nLedCurrent > 0x7F) {
     return ADPD400xDrv_ERROR;
   }
-  
-  if((nLedId == ADPD400xDrv_LED1) ||(nLedId == ADPD400xDrv_LED3)) {
-      nMask = ~BITM_LED_POW12_A_LED_CURRENT1_A;
-      nBitPos = BITP_LED_POW12_A_LED_CURRENT1_A;
-  } else {
-      nMask = ~BITM_LED_POW12_A_LED_CURRENT2_A;
-      nBitPos = BITP_LED_POW12_A_LED_CURRENT2_A;
-  }
-  
+
+  nMask = ~BITM_LED_POW12_A_LED_CURRENT1_A;
+  nBitPos = BITP_LED_POW12_A_LED_CURRENT1_A + ((!(nLedId&0x1))<<3);
 
   // Read the current register value
   if (Adpd400xDrvRegRead(nReg, &nAdpd400xData) != ADPD400xDrv_SUCCESS)
@@ -860,7 +852,7 @@ int16_t Adpd400xDrvSetLedCurrent(uint16_t nLedCurrent, ADPD400xDrv_LedId_t nLedI
 int16_t Adpd400xDrvGetLedCurrent(uint16_t *pLedCurrent, ADPD400xDrv_LedId_t nLedId, ADPD400xDrv_SlotNum_t nSlotNum) {
   int16_t nRetCode = ADPD400xDrv_SUCCESS;
   uint16_t nMask;
-  uint16_t nReg;
+  uint8_t nReg;
   uint8_t nBitPos;
   uint16_t nAdpd400xData;
 
@@ -870,13 +862,8 @@ int16_t Adpd400xDrvGetLedCurrent(uint16_t *pLedCurrent, ADPD400xDrv_LedId_t nLed
 
   nReg = ADPD400x_REG_LED_POW12_A + ((nLedId - 1)>>1) + nSlotNum*0x20;
 
-  if((nLedId == ADPD400xDrv_LED1) ||(nLedId == ADPD400xDrv_LED3)) {
-      nMask = BITM_LED_POW12_A_LED_CURRENT1_A;
-      nBitPos = BITP_LED_POW12_A_LED_CURRENT1_A;
-  } else {
-      nMask = BITM_LED_POW12_A_LED_CURRENT2_A;
-      nBitPos = BITP_LED_POW12_A_LED_CURRENT2_A;
-  }
+  nMask = BITM_LED_POW12_A_LED_CURRENT1_A;
+  nBitPos = BITP_LED_POW12_A_LED_CURRENT1_A + ((!(nLedId&0x1))<<3);
 
   // Read the current register value
   if (Adpd400xDrvRegRead(nReg, &nAdpd400xData) != ADPD400xDrv_SUCCESS)
@@ -923,13 +910,13 @@ static int16_t _Adpd400xDrvSelComMode() {
   uint16_t nDevId;
   
   nAdpd400xCommMode = ADPD400x_I2C_BUS;
-  if (Adpd400xDrvRegRead(ADPD400x_REG_CHIP_ID, &nDevId) == ADPD400xDrv_SUCCESS) {
+  if (Adpd400xDrvRegRead(0x08, &nDevId) == ADPD400xDrv_SUCCESS) {
     if (nDevId == ADPD400x_ID)
         return ADPD400xDrv_SUCCESS;
   }
   
   nAdpd400xCommMode = ADPD400x_SPI_BUS;
-  if (Adpd400xDrvRegRead(ADPD400x_REG_CHIP_ID, &nDevId) == ADPD400xDrv_SUCCESS) {
+  if (Adpd400xDrvRegRead(0x08, &nDevId) == ADPD400xDrv_SUCCESS) {
     if (nDevId == ADPD400x_ID)
         return ADPD400xDrv_SUCCESS;
   }
