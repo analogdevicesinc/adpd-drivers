@@ -310,9 +310,6 @@ int16_t AdpdDrvSetOperationMode(uint8_t nOpMode)
 	} else {
 		nRetCode = ADPDDrv_ERROR;
 	}
-	if (gnDeviceID != DEVICE_ID_516)
-		// nRetCode |= AdpdDrvRegWrite(REG_FIFO_CLK, FIFO_CLK_DIS);   // clock OFF
-		nRetCode |= AdpdDrvRegWrite(REG_TEST_PD, 0x0242);
 	for (nLoopCnt = 0; nLoopCnt < 5; nLoopCnt++)
 		gnAccessCnt[nLoopCnt] = 0;
 	return nRetCode;
@@ -589,15 +586,6 @@ int16_t AdpdDrvReadFifoData(uint8_t *pnData, uint16_t nDataSetSize)
 	if (gnFifoLevel >= 128)
 		gnOverFlowCnt++;
 #endif  // NDEBUG
-	if (gnDeviceID != DEVICE_ID_516) {
-		if (gnFifoLevel >= nDataSetSize) {
-			nGetFifoData = 1;
-			AdpdDrvRegWrite(REG_TEST_PD, 0x343);
-			AdpdDrvRegWrite(REG_TEST_PD, 0xF4F);
-		} else {
-			nGetFifoData = 0;
-		}
-	}
 	if (gnFifoLevel >= nDataSetSize) {
 		gnAccessCnt[2]++;
 		nAddr = REG_DATA_BUFFER;
@@ -625,10 +613,6 @@ int16_t AdpdDrvReadFifoData(uint8_t *pnData, uint16_t nDataSetSize)
 			return ADPDDrv_ERROR;
 #endif // ADPD_SPI
 	}
-	if (gnDeviceID != DEVICE_ID_516)
-		if (nGetFifoData == 1)
-			// AdpdDrvRegWrite(REG_FIFO_CLK, FIFO_CLK_DIS);  // disable FIFO clock
-			AdpdDrvRegWrite(REG_TEST_PD, 0x0242);
 	return ADPDDrv_SUCCESS;
 }
 
