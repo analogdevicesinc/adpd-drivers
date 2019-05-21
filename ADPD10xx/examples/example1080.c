@@ -2,15 +2,15 @@
 
     ***************************************************************************
 
-      @file         example188.c
+      @file         example1080.c
 
       @author       ADI
 
       @version      V3.0.0
 
-      @date         23-Apr-2018
+      @date         25-Jan-2018
 
-      @brief        Sample application to use ADI ADPD188 driver.
+      @brief        Sample application to use ADI ADPD1080 driver.
 
 
 
@@ -144,79 +144,79 @@ char _SBZ[BUF_SIZE]; // used by 'debug'
 
 
 
-uint32_t dcfg_org_188[] = {
+uint32_t dcfg_org_1080[] = {
 
-  0x00120014,
+	0x00120014,
 
-  0x00150330,
+	0x00150330,
 
-  0x00183FFF,
+	0x00181F00,
 
-  0x00193FFF,
+	0x00193FFF,
 
-  0x001A1F00,
+	0x001A3FFF,
 
-  0x001B1F00,
+	0x001B3FFF,
 
-  0x001E3FFF,
+	0x001E1F00,
 
-  0x001F3FFF,
+	0x001F3FFF,
 
-  0x00201F00,
+	0x00203FFF,
 
-  0x00211F00,
+	0x00213FFF,
 
-  0x00340000,
+	0x00340000,
 
-  0x00060000,
+	0x00060000,
 
-  0x001130A0,
+	0x001130A0,
 
-  0x00140555,
+	0x00140555,
 
-  0x00221030,
+	0x00221030,
 
-  0x00233036,
+	0x00233036,
 
-  0x00241030,
+	0x00241030,
 
-  0x0025630C,
+	0x0025630C,
 
-  0x00300220,
+	0x00300220,
 
-  0x0031020f,
+	0x0031020f,
 
-  0x00350220,
+	0x00350220,
 
-  0x0036020f,
+	0x0036020f,
 
-  0x00391af8,
+	0x00391af8,
 
-  0x003B1af8,
+	0x003B1af8,
 
-    0x003C7006,  
+        0x003C7006,	
 
-  0x00421C35,
+	0x00421C35,
 
-  0x0043ADA5,
+	0x0043ADA5,
 
-  0x00441C34,
+	0x00441C34,
 
-  0x0045ADA5,
+	0x0045ADA5,
 
-  0x004E7040,
+        0x004E7040,
 
-  0x00540AA0,
+        0x00540AA0,
 
-  0x003F0320,
+        0x003F0320,
 
-  0x00580000,
+        0x00580000,
 
-  0x00590808,
+        0x00590808,
 
-  0x005A0010,
+        0x005A0010,
 
-  0xFFFFFFFF,
+	0xFFFFFFFF,
 
 };
 
@@ -284,13 +284,13 @@ void AdpdFifoCallBack(void)
 
 {
 
-  /* Read the timestamp when the interrupt comes */
+	/* Read the timestamp when the interrupt comes */
 
-  gnAdpdTimeCurVal = MCU_HAL_GetTick();
+	gnAdpdTimeCurVal = MCU_HAL_GetTick();
 
-  /* Set gnAdpdDataReady to 1 to indicate that the data and timestamp is ready */
+	/* Set gnAdpdDataReady to 1 to indicate that the data and timestamp is ready */
 
-  gnAdpdDataReady = 1;
+	gnAdpdDataReady = 1;
 
 }
 
@@ -392,53 +392,53 @@ void main(void)
 
 {
 
-  /* Hardware initializations */
+	/* Hardware initializations */
 
-  HW_Global_Init();
-
-
-
-  debug("Start\r\n");
+	HW_Global_Init();
 
 
 
-  /* Register data ready callback */
-
-  AdpdDrvDataReadyCallback(AdpdFifoCallBack);
+	debug("Start\r\n");
 
 
 
-  /* Soft reset the ADPD device */
+	/* Register data ready callback */
 
-  AdpdDrvSoftReset();
-
-
-
-  /* Initialize the ADPD driver*/
-
-  AdpdDrvOpenDriver();
+	AdpdDrvDataReadyCallback(AdpdFifoCallBack);
 
 
 
-  /* Load default configuration parameters */
+	/* Soft reset the ADPD device */
 
-  LoadDefaultConfig(dcfg_org_188);
-
-  /* Read default configuration parameters from the device registers and verify */
-
-  VerifyDefaultConfig(dcfg_org_188);
+	AdpdDrvSoftReset();
 
 
 
-  /* Write standard value of clock registers */
+	/* Initialize the ADPD driver*/
 
-  AdpdDrvRegWrite(0x004B, 0x2695);
+	AdpdDrvOpenDriver();
 
-  AdpdDrvRegWrite(0x004D, 0x4272);
 
-  /* Driver bring up with 16-bits output data and 8 channel mode */
 
-  AdpdDriverBringUp(ADPDDrv_4CH_16, ADPDDrv_4CH_16);
+	/* Load default configuration parameters */
+
+	LoadDefaultConfig(dcfg_org_1080);
+
+	/* Read default configuration parameters from the device registers and verify */
+
+	VerifyDefaultConfig(dcfg_org_1080);
+
+
+
+	/* Write standard value of clock registers */
+
+	AdpdDrvRegWrite(0x004B, 0x2695);
+
+	AdpdDrvRegWrite(0x004D, 0x4272);
+
+	/* Driver bring up with 16-bits output data and 8 channel mode */
+
+	AdpdDriverBringUp(ADPDDrv_4CH_16, ADPDDrv_4CH_16);
 
 }
 
@@ -460,33 +460,33 @@ void HW_Global_Init()
 
 
 
-  /* HAL initializations such as enabling system tick and low level hardware initialization.*/
+	/* HAL initializations such as enabling system tick and low level hardware initialization.*/
 
-  HAL_Init();
+	HAL_Init();
 
-  /* Configure the system clock to 26 Mhz */
+	/* Configure the system clock to 26 Mhz */
 
-  SystemClock_Config();
+	SystemClock_Config();
 
-  /* Initialize the GPIO. Should be called before I2C_Init() */
+	/* Initialize the GPIO. Should be called before I2C_Init() */
 
-  GPIO_Init();
+	GPIO_Init();
 
-  /* Initialize the UART */
+	/* Initialize the UART */
 
-  UART_Init();
+	UART_Init();
 
-  /* Initialize the I2C. Should be called after GPIO_Init() */
+	/* Initialize the I2C. Should be called after GPIO_Init() */
 
-  I2C_Init();
+	I2C_Init();
 
 
 
-  SPI_Init();
+	SPI_Init();
 
-  /* Configure the voltage regulators in proper mode */
+	/* Configure the voltage regulators in proper mode */
 
-  ADP_init();
+	ADP_init();
 
 }
 
@@ -506,53 +506,53 @@ void LoadDefaultConfig(uint32_t *cfg)
 
 {
 
-  uint8_t regAddr, i;
+	uint8_t regAddr, i;
 
-  uint16_t regData;
+	uint16_t regData;
 
-  if (cfg == 0) {
+	if (cfg == 0) {
 
-    return;
+		return;
 
-  }
+	}
 
-  /* Clear the FIFO */
+	/* Clear the FIFO */
 
-  AdpdDrvRegWrite(0x10, 0);
+	AdpdDrvRegWrite(0x10, 0);
 
-  AdpdDrvRegWrite(0x5F, 1);
+	AdpdDrvRegWrite(0x5F, 1);
 
-  AdpdDrvRegWrite(0x00, 0x80FF);
+	AdpdDrvRegWrite(0x00, 0x80FF);
 
-  AdpdDrvRegWrite(0x5F, 0);
+	AdpdDrvRegWrite(0x5F, 0);
 
-  i = 0;
+	i = 0;
 
-  while (1) {
+	while (1) {
 
-    /* Read the address and data from the config */
+		/* Read the address and data from the config */
 
-    regAddr = (uint8_t)(cfg[i] >> 16);
+		regAddr = (uint8_t)(cfg[i] >> 16);
 
-    regData = (uint16_t)(cfg[i]);
+		regData = (uint16_t)(cfg[i]);
 
-    i++;
+		i++;
 
-    if (regAddr == 0xFF) {
+		if (regAddr == 0xFF) {
 
-      break;
+			break;
 
-    }
+		}
 
-    /* Load the data into the ADPD registers */
+		/* Load the data into the ADPD registers */
 
-    if (AdpdDrvRegWrite(regAddr, regData) != ADPDDrv_SUCCESS) {
+		if (AdpdDrvRegWrite(regAddr, regData) != ADPDDrv_SUCCESS) {
 
-      break;
+			break;
 
-    }
+		}
 
-  }
+	}
 
 }
 
@@ -572,55 +572,55 @@ void VerifyDefaultConfig(uint32_t *cfg)
 
 {
 
-  uint16_t def_val;
+	uint16_t def_val;
 
-  uint8_t  i;
+	uint8_t  i;
 
-  uint8_t  regAddr;
+	uint8_t  regAddr;
 
-  uint16_t regData;
+	uint16_t regData;
 
-  if (cfg == 0) {
+	if (cfg == 0) {
 
-    return;
+		return;
 
-  }
+	}
 
-  i = 0;
+	i = 0;
 
-  /* Read the address and data from the config */
+	/* Read the address and data from the config */
 
-  regAddr = (uint8_t)(cfg[0] >> 16);
+	regAddr = (uint8_t)(cfg[0] >> 16);
 
-  def_val = (uint16_t)(cfg[0]);
+	def_val = (uint16_t)(cfg[0]);
 
-  /* Read the data from the ADPD registers and verify */
+	/* Read the data from the ADPD registers and verify */
 
-  while (regAddr != 0xFF) {
+	while (regAddr != 0xFF) {
 
-    if (AdpdDrvRegRead(regAddr, &regData) != ADPDDrv_SUCCESS) {
+		if (AdpdDrvRegRead(regAddr, &regData) != ADPDDrv_SUCCESS) {
 
-      debug("DCFG: Read Error reg(%0.2x)\n", regAddr);
+			debug("DCFG: Read Error reg(%0.2x)\n", regAddr);
 
-      return;
+			return;
 
-    } else if (regData != def_val) {
+		} else if (regData != def_val) {
 
-      debug("DCFG: Read mismatch reg(%0.2x) (%0.2x != %0.2x)\n",
+			debug("DCFG: Read mismatch reg(%0.2x) (%0.2x != %0.2x)\n",
 
-            regAddr, def_val, regData);
+			      regAddr, def_val, regData);
 
-      return;
+			return;
 
-    }
+		}
 
-    i++;
+		i++;
 
-    regAddr = (uint8_t)(cfg[i] >> 16);
+		regAddr = (uint8_t)(cfg[i] >> 16);
 
-    def_val = (uint16_t)(cfg[i]);
+		def_val = (uint16_t)(cfg[i]);
 
-  }
+	}
 
 }
 
@@ -642,65 +642,65 @@ void AdpdDriverBringUp(uint8_t nSlotA, uint8_t nSlotB)
 
 {
 
-  uint32_t LoopCnt;
+	uint32_t LoopCnt;
 
-  uint16_t nRetValue = 0;
+	uint16_t nRetValue = 0;
 
-  uint16_t nAdpdFifoLevelSize = 0, nAdpdDataSetSize;
+	uint16_t nAdpdFifoLevelSize = 0, nAdpdDataSetSize;
 
-  uint8_t value[16] = {0};
+	uint8_t value[16] = {0};
 
     uint8_t nLoopLim;
 
 
 
-  /* Set the slot modes for slot A and slot B */
+	/* Set the slot modes for slot A and slot B */
 
-  AdpdDrvSetSlot(nSlotA, nSlotB);
+	AdpdDrvSetSlot(nSlotA, nSlotB);
 
         /* Set the device operation to sample mode. The data can be collected now */
 
-  AdpdDrvSetOperationMode(ADPDDrv_MODE_SAMPLE);
+	AdpdDrvSetOperationMode(ADPDDrv_MODE_SAMPLE);
 
         nLoopLim = nAdpdDataSetSize = 16;
 
-  while (1) {
+	while (1) {
 
-    /* Check if the data is ready */
+		/* Check if the data is ready */
 
-    if(gnAdpdDataReady)  {
+		if(gnAdpdDataReady)  {
 
-      gnAdpdDataReady = 0;
+			gnAdpdDataReady = 0;
 
-      /* Read the size of the data available in the FIFO */
+			/* Read the size of the data available in the FIFO */
 
-      AdpdDrvGetParameter(ADPD_FIFOLEVEL, &nAdpdFifoLevelSize);
+			AdpdDrvGetParameter(ADPD_FIFOLEVEL, &nAdpdFifoLevelSize);
 
-      /* Read the data from the FIFO and print them */
+			/* Read the data from the FIFO and print them */
 
-      while (nAdpdFifoLevelSize >= nAdpdDataSetSize) {
+			while (nAdpdFifoLevelSize >= nAdpdDataSetSize) {
 
-        nRetValue = AdpdDrvReadFifoData(&value[0], nAdpdDataSetSize);
+				nRetValue = AdpdDrvReadFifoData(&value[0], nAdpdDataSetSize);
 
-        if (nRetValue == ADPDDrv_SUCCESS) {
+				if (nRetValue == ADPDDrv_SUCCESS) {
 
-          for (LoopCnt = 0; LoopCnt < nLoopLim; LoopCnt += 2)
+					for (LoopCnt = 0; LoopCnt < nLoopLim; LoopCnt += 2)
 
-            /* Byte swapping is needed to print ADPD data in proper format */
+						/* Byte swapping is needed to print ADPD data in proper format */
 
-            debug("%u ", (value[LoopCnt] << 8) | value[LoopCnt + 1]);
+						debug("%u ", (value[LoopCnt] << 8) | value[LoopCnt + 1]);
 
-          debug("%u\r\n", gnAdpdTimeCurVal);
+					debug("%u\r\n", gnAdpdTimeCurVal);
 
-          nAdpdFifoLevelSize = nAdpdFifoLevelSize - nAdpdDataSetSize;
+					nAdpdFifoLevelSize = nAdpdFifoLevelSize - nAdpdDataSetSize;
 
-        }
+				}
 
-      }
+			}
 
-    }
+		}
 
-  }
+	}
 
 }
 
