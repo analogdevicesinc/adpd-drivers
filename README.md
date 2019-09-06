@@ -1,15 +1,11 @@
 # adpd-drivers
 Analog Devices Photometric Device Drivers 
 -----------------------------------------
-In order to get started we suggest following steps:
 
-1. There is extensive documentation including Doxygen present in the "Documentation" directory.
+This repository hosts the ADPD family of device drivers.
 
-2. The Software License Agreement (SLA) can be found in the "License" directory. 
+You will find examples for each family of device. The examples cover not only using the device drivers, but cases where the device driver is not used.
 
-3. The driver source and the header files are present in the "ADPD Drivers" directory.
+We will be adding additional examples in the coming weeks.
 
-4. By default, the driver works for I2C based devices. Uncomment line number 159 in AdpdDrv.h to define ADPD_SPI macro for SPI based devices.
-
-5. The example codes for ADPD103/105/107/108 can be found in the "Examples" directory.
-
+As a first step we suggest you view the License file.
