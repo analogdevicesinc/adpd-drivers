@@ -61,16 +61,20 @@
 
 /* ------------------------- Defines  -------------------------------------- */
 #ifdef __TESSY_DEF__
-#define USER_DEFINED_SOFTWARE_RESET (1U) /*!< Set this macro as '1U' to do software reset alone */
+#define USER_DEFINED_SOFTWARE_RESET (1U) /*!< Set Macro as '1' to execute user
+                                               defined generic software reset routine */
 #else
-#define USER_DEFINED_SOFTWARE_RESET (0U) /*!< Set this macro as '1U' to do software reset alone */
+#define USER_DEFINED_SOFTWARE_RESET (0U) /*!< Set Macro as '1' to execute user
+                                               defined generic software reset routine */
 #endif
+#define SLEEP_TIME               (500U) /*!< Sleep time for software reset (msec)*/
+#define FIFO_TH_INT_ENA ((0x1U) << 15U) /*!< Enable FIFO threshold Interrupt */
+#define FIFO_UF_INT_ENA ((0x1U) << 14U) /*!< Enable FIFO Underflow Interrupt */
+#define FIFO_OF_INT_ENA ((0x1U) << 13U) /*!< Enable FIFO Overflow Interrupt */
 
-#define SLEEP_TIME              (500U) /*!< Time delay for software reset(msec)*/
-#define FIFO_TH_INT_ENA         ((0x1U) << 15U) /*!< Macro value to enable FIFO threshold detection */
-#define FIFO_UF_INT_ENA         ((0x1U) << 14U) /*!< Macro value to enable Underflow FIFO threshold detection */
-#define FIFO_OF_INT_ENA         ((0x1U) << 13U) /*!< Macro value to enable Overflow FIFO threshold detection */
-#define BYTE_SWAP_16(WORD)      ((((WORD) >> (8U)) & 0xffU) | (((WORD) & 0xffU) << (8U))) /*!< Macro to be used for swap 16-bit value */
+
+#define BYTE_SWAP_16(x) \
+  ((((x) >> (8U)) & 0xffU) | (((x) & 0xffU) << (8U))) /*!< Swap bytes in 16 bit value.  */
 /*------------------------- Public Variables ------------------------------- */
 
 /* ------------------------- Public Function Prototypes -------------------- */
@@ -81,16 +85,22 @@ tAdiAdpdDrvInst gAdiAdpdDrvInst;  /*!< Driver instance object */
 /* ------------------------- Private Function Prototypes ------------------- */
 static uint16_t _adi_adpddrv_SetInterrupt(void);
 static void _adi_adpddrv_CheckFifoOvFl(void);
+/*!****************************************************************************
+*  \fn          static void (*gpfnADPDCallBack)(uint32_t nTick)
+*  \brief       Register data ready callback
+*
+*  \param[in]   nTick: Time tick of Interrupt happened
+*
+*  \return      ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
+******************************************************************************/
 static void (*gpfnADPDCallBack)(uint32_t nTick);
 static uint16_t _adi_adpddrv_SelComMode(void);
 /* ------------------------- FUNCTIONS AND APIS ---------------------------- */
 /*!****************************************************************************
 *
-*  \b              adi_adpddrv_OpenDriver
+*  \brief       Open Driver, setting up the interrupt and I2C lines
 *
-*  Open Driver, setting up the interrupt and I2C lines
-*
-*  \return       ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
+*  \return      ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
 *
 ******************************************************************************/
 uint16_t adi_adpddrv_OpenDriver(void)
@@ -157,12 +167,9 @@ uint16_t adi_adpddrv_OpenDriver(void)
 
 /*!****************************************************************************
 *
-*  \b              adi_adpddrv_CloseDriver
+*  \brief       Close Driver, Clear up before existing
 *
-*  Close Driver, Clear up before existing
-*
-*  \return       ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
-*
+*  \return      ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
 ******************************************************************************/
 uint16_t adi_adpddrv_CloseDriver(void)
 {
@@ -172,13 +179,10 @@ uint16_t adi_adpddrv_CloseDriver(void)
 
 /*!****************************************************************************
 *
-*  \b              adi_adpddrv_GetComMode
+*  \brief       Returns the communication bus: I2C, SPI or Uknown
+*               See the enum ADI_ADPD_COMM_MODE
 *
-*  Returns the communication bus: I2C, SPI or Unknown
-*           See the enum ADI_ADPD_COMM_MODE
-*
-*  \return       ADI_ADPD_COMM_MODE enumeration value
-*
+*  \return      ADI_ADPD_COMM_MODE enumeration value
 ******************************************************************************/
 ADI_ADPD_COMM_MODE adi_adpddrv_GetComMode(void)
 {
@@ -188,16 +192,13 @@ ADI_ADPD_COMM_MODE adi_adpddrv_GetComMode(void)
 
 /*!****************************************************************************
 *
-*  \b              adi_adpddrv_RegWrite
+*  \brief       Synchronous register write to the ADPD4x register with the given value
 *
-*  Synchronous register write to the ADPD400x register with the given value
+*  \param[in]   nAddr: 16-bit register address
 *
-*  \param[in]    nAddr: 16-bit register address
+*  \param[in]   nRegValue: 16-bit register data value
 *
-*  \param[in]    nRegValue: 16-bit register data value
-*
-*  \return       ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
-*
+*  \return      ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
 ******************************************************************************/
 uint16_t adi_adpddrv_RegWrite(uint16_t nAddr, uint16_t nRegValue)
 {
@@ -228,16 +229,16 @@ uint16_t adi_adpddrv_RegWrite(uint16_t nAddr, uint16_t nRegValue)
       anTxData[nTxSize++] = (uint8_t)(nRegValue);
 
       /*
-      The first argument to the function ADPD400x_SPI_Transmit is the register
-      address of the ADPD400x device and the 16 bits data value to be written to the
+      The first argument to the function ADPD4x_SPI_Transmit is the register
+      address of the ADPD4x device and the 16 bits data value to be written to the
       device register.
-      The 1st argument to the function ADPD400x_SPI_Transmit is the pointer to the
+      The 1st argument to the function ADPD4x_SPI_Transmit is the pointer to the
       buffer of the size of three bytes in which first byte is the register
-      address of the ADPD400x device.
+      address of the ADPD4x device.
       The second and the third bytes are the 16 bits data value to be written
       to the device register
       The 2nd argument is the size of the buffer in bytes (3 bytes).
-      ADPD400x_SPI_Transmit() should be implemented in such a way that it transmits
+      ADPD4x_SPI_Transmit() should be implemented in such a way that it transmits
       the data from anTxData buffer of size specified in the second argument.
       */
       if (Adpd400x_SPI_Transmit(anTxData, nTxSize)!= ADI_ADPD_DRV_SUCCESS)
@@ -265,16 +266,16 @@ uint16_t adi_adpddrv_RegWrite(uint16_t nAddr, uint16_t nRegValue)
       anTxData[nTxSize++] = (uint8_t)(nRegValue >> 8U);
       anTxData[nTxSize++] = (uint8_t)(nRegValue);
       /*
-      The first argument to the function ADPD400x_I2C_Transmit is the register
-      address of the ADPD400x device and the 16 bits data value to be written to the
+      The first argument to the function ADPD4x_I2C_Transmit is the register
+      address of the ADPD4x device and the 16 bits data value to be written to the
       device register.
-      The 1st argument to the function ADPD400x_I2C_Transmit is the pointer to the
+      The 1st argument to the function ADPD4x_I2C_Transmit is the pointer to the
       buffer of the size of three bytes in which first byte is the register
-      address of the ADPD400x device.
+      address of the ADPD4x device.
       The second and the third bytes are the 16 bits data value to be written
       to the device register
       The 2nd argument is the size of the buffer in bytes (3 bytes).
-      ADPD400x_I2C_Transmit() should be implemented in such a way that it transmits
+      ADPD4x_I2C_Transmit() should be implemented in such a way that it transmits
       the data from anTxData buffer of size specified in the second argument.
       */
 
@@ -300,16 +301,13 @@ uint16_t adi_adpddrv_RegWrite(uint16_t nAddr, uint16_t nRegValue)
 
 /*!****************************************************************************
 *
-*  \b              adi_adpddrv_RegRead
+*  \brief       Synchronous register read of the ADPD4x register into the given pointer
 *
-*  Synchronous register read of the ADPD400x register into the given pointer
+*  \param[in]   nAddr: 16-bit register address
 *
-*  \param[in]    nAddr: 16-bit register address
+*  \param[in]   pnData: Pointer to 16-bit register data value
 *
-*  \param[in]    pnData: Pointer to 16-bit register data value
-*
-*  \return       ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
-*
+*  \return      ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
 ******************************************************************************/
 uint16_t adi_adpddrv_RegRead(uint16_t nAddr, uint16_t *pnData)
 {
@@ -328,17 +326,17 @@ uint16_t adi_adpddrv_RegRead(uint16_t nAddr, uint16_t *pnData)
   {
     /* To set the last bit low for read operation */
     nTmpAddr = (nAddr << 1U) & ADPD400x_SPI_READ;
-    /*! Prepare the transmit buffer with register address */
+    /* Prepare the transmit buffer with register address */
     anTxData[nTxSize++] = (uint8_t)(nTmpAddr >> 8U);
     anTxData[nTxSize++] = (uint8_t)(nTmpAddr);
     /*
     The first argument to the function is the register address of the
-    ADPD400x device from where the data is to be read.
+    ADPD4x device from where the data is to be read.
     The 2nd argument is the pointer to the buffer of received data.
     The size of this buffer should be equal to the number of data requested.
     The 3rd argument is the size of transmit data in bytes.
     The 4th argument is the size of requested data in bytes.
-    Adpd400x_SPI_Receive() should be implemented in such a way that it transmits
+    Adpd4x_SPI_Receive() should be implemented in such a way that it transmits
     the register address from the first argument and receives the data
     specified by the address in the second argument. The received data will
     be of size specified by 3rd argument.
@@ -364,12 +362,12 @@ uint16_t adi_adpddrv_RegRead(uint16_t nAddr, uint16_t *pnData)
     }
     /*
     The first argument to the function is the register address of the
-    ADPD400x device from where the data is to be read.
+    ADPD4x device from where the data is to be read.
     The 2nd argument is the pointer to the buffer of received data.
     The size of this buffer should be equal to the number of data requested.
     The 3rd argument is the size of transmit data in bytes.
     The 4th argument is the size of requested data in bytes.
-    Adpd400x_I2C_TxRx() should be implemented in such a way that it transmits
+    Adpd4x_I2C_TxRx() should be implemented in such a way that it transmits
     the register address from the first argument and receives the data
     specified by the address in the second argument. The received data will
     be of size specified by 3rd argument.
@@ -397,16 +395,13 @@ uint16_t adi_adpddrv_RegRead(uint16_t nAddr, uint16_t *pnData)
 
 /*!****************************************************************************
 *
-*  \b              adi_adpddrv_RegRead32B
+*  \brief       Synchronous register read of 32bit ADPD4x register into the given pointer
 *
-*  Synchronous register read of 32bit ADPD400x register into the given pointer
+*  \param[in]   nAddr: 16-bit register address
 *
-*  \param[in]    nAddr: 16-bit register address
+*  \param[in]   pnData: Pointer to 32-bit register data value
 *
-*  \param[in]    pnData: Pointer to 32-bit register data value
-*
-*  \return       ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
-*
+*  \return      ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
 ******************************************************************************/
 uint16_t adi_adpddrv_RegRead32B(uint16_t nAddr, uint32_t *pnData)
 {
@@ -430,12 +425,12 @@ uint16_t adi_adpddrv_RegRead32B(uint16_t nAddr, uint32_t *pnData)
     anTxData[nTxSize++] = (uint8_t)(nTmpAddr);
     /*
     The first argument to the function is the register address of the
-    ADPD400x device from where the data is to be read.
+    ADPD4x device from where the data is to be read.
     The 2nd argument is the pointer to the buffer of received data.
     The size of this buffer should be equal to the number of data requested.
     The 3rd argument is the size of transmit data in bytes.
     The 4th argument is the size of requested data in bytes.
-    Adpd400x_SPI_Receive() should be implemented in such a way that it transmits
+    Adpd4x_SPI_Receive() should be implemented in such a way that it transmits
     the register address from the first argument and receives the data
     specified by the address in the second argument. The received data will
     be of size specified by 3rd argument.
@@ -463,12 +458,12 @@ uint16_t adi_adpddrv_RegRead32B(uint16_t nAddr, uint32_t *pnData)
     }
     /*
     The first argument to the function is the register address of the
-    ADPD400x device from where the data is to be read.
+    ADPD4x device from where the data is to be read.
     The 2nd argument is the pointer to the buffer of received data.
     The size of this buffer should be equal to the number of data requested.
     The 3rd argument is the size of transmit data in bytes.
     The 4th argument is the size of requested data in bytes.
-    Adpd400x_I2C_TxRx() should be implemented in such a way that it transmits
+    Adpd4x_I2C_TxRx() should be implemented in such a way that it transmits
     the register address from the first argument and receives the data
     specified by the address in the second argument. The received data will
     be of size specified by 3rd argument.
@@ -496,26 +491,28 @@ uint16_t adi_adpddrv_RegRead32B(uint16_t nAddr, uint32_t *pnData)
 
 /*!****************************************************************************
 *
-*  \b              adi_adpddrv_Multiple_RegWrite
+*  \brief       Synchronous register write to the ADPD4x register with the given value
 *
-*  Synchronous register write to the ADPD400x register with the given value
+*  \param[in]   nRegCount: 16-bit register count
 *
-*  \param[in]    nRegCount: 16-bit register count
+*  \param[in]   pRegValue: 16-bit Buffer pointer which point out register buffer
 *
-*  \param[in]    pRegValue: 16-bit Buffer pointer which point out register buffer
-*
-*  \return       ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
-*
+*  \return      ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
+
 ******************************************************************************/
 uint16_t adi_adpddrv_Multiple_RegWrite(uint16_t nRegCount, uint16_t *pRegValue)
 {
   /* Declare variable to track the status of routine */
   uint16_t nRetCode = ADI_ADPD_DRV_SUCCESS;
+  /* Declare variable to count registers */
+  uint16_t nBytesCount = 0U;
   /* Declare variable to store pointer address of receive buffer */
   uint8_t *anTxData = (uint8_t *)pRegValue;
   /* Check the communication type and do register write */
   if (gAdiAdpdDrvInst.nAdpd400xCommMode == E_ADI_ADPD_SPI_BUS)
   {
+    /* Calculate the bytes to be transfered */
+    nBytesCount = nRegCount * 2U;
     /* To set the last bit high for write operation */
     pRegValue[0] = pRegValue[0] << 1U | ADPD400x_SPI_WRITE;
     /* swap the endianness to write MSB bit value as first */
@@ -527,14 +524,14 @@ uint16_t adi_adpddrv_Multiple_RegWrite(uint16_t nRegCount, uint16_t *pRegValue)
       pRegValue[nIndex] = BYTE_SWAP_16(pRegValue[nIndex]);
     }
     /*
-    The 1st argument to the function ADPD400x_SPI_Transmit is the pointer to the
+    The 1st argument to the function ADPD4x_SPI_Transmit is the pointer to the
     buffer of the size of three bytes in which first byte is the register
-    address of the ADPD400x device.
+    address of the ADPD4x device.
     The 2nd argument is the size of the buffer in bytes (n bytes).
-    ADPD400x_SPI_Transmit() should be implemented in such a way that it transmits
+    ADPD4x_SPI_Transmit() should be implemented in such a way that it transmits
     the data from anTxData buffer of size specified in the second argument.
     */
-    if (Adpd400x_SPI_Transmit(anTxData, nRegCount * 2U)!= ADI_ADPD_DRV_SUCCESS)
+    if (Adpd400x_SPI_Transmit(anTxData, nBytesCount)!= ADI_ADPD_DRV_SUCCESS)
     {
       /* Update the trace variable with failure code, so the caller will get
       status of their request */
@@ -543,6 +540,8 @@ uint16_t adi_adpddrv_Multiple_RegWrite(uint16_t nRegCount, uint16_t *pRegValue)
   }
   else if(gAdiAdpdDrvInst.nAdpd400xCommMode == E_ADI_ADPD_I2C_BUS)
   {
+    /* Calculate the bytes to be transfered */
+    nBytesCount = nRegCount * 2U;
     /* add the register value in transmit buffer */
     for(uint16_t nIndex = 1U; nIndex < nRegCount; nIndex++)
     {
@@ -555,26 +554,25 @@ uint16_t adi_adpddrv_Multiple_RegWrite(uint16_t nRegCount, uint16_t *pRegValue)
       pRegValue[0] = pRegValue[0] | ADPD400x_I2C_LONG_ADDRESS;
       /* swap the endianness to write MSB bit value as first */
       pRegValue[0] = BYTE_SWAP_16(pRegValue[0]);
-      nRegCount = nRegCount * 2U;
+      nBytesCount = nRegCount * 2U;
     }
     else
     {
       /* swap the endianness to write MSB bit value as first */
       pRegValue[0] = BYTE_SWAP_16(pRegValue[0]);
-      nRegCount = nRegCount * 2U;
-      nRegCount = nRegCount - 1U;
+      nBytesCount = nBytesCount - 1U;
       anTxData++;
     }
     /*
-    The 1st argument to the function ADPD400x_I2C_Transmit is the pointer to the
+    The 1st argument to the function ADPD4x_I2C_Transmit is the pointer to the
     buffer of the size of three bytes in which first byte is the register
-    address of the ADPD400x device.
+    address of the ADPD4x device.
     The 2nd argument is the size of the buffer in bytes (n bytes).
-    ADPD400x_I2C_Transmit() should be implemented in such a way that it transmits
+    ADPD4x_I2C_Transmit() should be implemented in such a way that it transmits
     the data from anTxData buffer of size specified in the second argument.
     */
 
-    if (Adpd400x_I2C_Transmit(anTxData, nRegCount) != ADI_ADPD_DRV_SUCCESS)
+    if (Adpd400x_I2C_Transmit(anTxData, nBytesCount) != ADI_ADPD_DRV_SUCCESS)
     {
       /* Update the trace variable with failure code, so the caller will get
       status of their request */
@@ -600,18 +598,15 @@ uint16_t adi_adpddrv_Multiple_RegWrite(uint16_t nRegCount, uint16_t *pRegValue)
 
 /*!****************************************************************************
 *
-*  \b              adi_adpddrv_Multiple_RegRead
+*  \brief       Synchronous register read of the ADPD4x register into the given pointer
 *
-*  Synchronous register read of the ADPD400x register into the given pointer
+*  \param[in]   nAddr: 16-bit register address
 *
-*  \param[in]    nAddr: 16-bit register address
+*  \param[in]   nRegCount: 16-bit register count
 *
-*  \param[in]    nRegCount: 16-bit register count
+*  \param[in]   pnData: Pointer to 16-bit register data value
 *
-*  \param[in]    pnData: Pointer to 16-bit register data value
-*
-*  \return       ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
-*
+*  \return      ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
 ******************************************************************************/
 uint16_t adi_adpddrv_Multiple_RegRead(uint16_t nAddr, uint16_t nRegCount, uint16_t *pnData)
 {
@@ -630,12 +625,12 @@ uint16_t adi_adpddrv_Multiple_RegRead(uint16_t nAddr, uint16_t nRegCount, uint16
     nAddr = BYTE_SWAP_16(nAddr);
     /*
     The first argument to the function is the register address of the
-    ADPD400x device from where the data is to be read.
+    ADPD4x device from where the data is to be read.
     The 2nd argument is the pointer to the buffer of received data.
     The size of this buffer should be equal to the number of data requested.
     The 3rd argument is the size of transmit data in bytes.
     The 4th argument is the size of requested data in bytes.
-    Adpd400x_SPI_Receive() should be implemented in such a way that it transmits
+    Adpd4x_SPI_Receive() should be implemented in such a way that it transmits
     the register address from the first argument and receives the data
     specified by the address in the second argument. The received data will
     be of size specified by 3rd argument.
@@ -665,12 +660,12 @@ uint16_t adi_adpddrv_Multiple_RegRead(uint16_t nAddr, uint16_t nRegCount, uint16
     }
     /*
     The first argument to the function is the register address of the
-    ADPD400x device from where the data is to be read.
+    ADPD4x device from where the data is to be read.
     The 2nd argument is the pointer to the buffer of received data.
     The size of this buffer should be equal to the number of data requested.
     The 3rd argument is the size of transmit data in bytes.
     The 4th argument is the size of requested data in bytes.
-    Adpd400x_I2C_TxRx() should be implemented in such a way that it transmits
+    Adpd4x_I2C_TxRx() should be implemented in such a way that it transmits
     the register address from the first argument and receives the data
     specified by the address in the second argument. The received data will
     be of size specified by 3rd argument.
@@ -701,14 +696,11 @@ uint16_t adi_adpddrv_Multiple_RegRead(uint16_t nAddr, uint16_t nRegCount, uint16
 
 /*!****************************************************************************
 *
-*  \b              adi_adpddrv_DataReadyCallback
+*  \brief       Register data ready callback
 *
-*  Register data ready callback
+*  \param[in]   pfADPDDataReady: Function Pointer callback for the data ready CB
 *
-*  \param[in]    pfADPDDataReady: Function Pointer callback for the data ready CB
-*
-*  \return       ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
-*
+*  \return      ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
 ******************************************************************************/
 void adi_adpddrv_DataReadyCallback(void (*pfADPDDataReady)(uint32_t nTick))
 {
@@ -718,14 +710,11 @@ void adi_adpddrv_DataReadyCallback(void (*pfADPDDataReady)(uint32_t nTick))
 
 /*!****************************************************************************
 *
-*  \b              adi_adpddrv_ISR
+*  \brief       ADPD4x interrupt service routine
 *
-*  ADPD400x interrupt service routine
+*  \param[in]   nTick: Ticks value passed from GPIO callback
 *
-*  \param[in]    nTick: Ticks value passed from GPIO callback
-*
-*  \return       None
-*
+*  \return      None
 ******************************************************************************/
 void adi_adpddrv_ISR(uint32_t nTick)
 {
@@ -743,12 +732,9 @@ void adi_adpddrv_ISR(uint32_t nTick)
 
 /*!****************************************************************************
 *
-*  \b              adi_adpddrv_GetDebugInfo
+*  \brief       Debug function. Read out debug info
 *
-*  Debug function. Read out debug info
-*
-*  \return  Debug Info Pointer
-*
+*  \return      Debug Info Pointer
 ******************************************************************************/
 uint32_t* adi_adpddrv_GetDebugInfo(void)
 {
@@ -758,16 +744,13 @@ uint32_t* adi_adpddrv_GetDebugInfo(void)
 
 /*!****************************************************************************
 *
-*  \b              adi_adpddrv_ReadFifoData
-*
-*  Read data out from Adpd400x FIFO
+*  \brief       Read data out from Adpd4x FIFO
 *
 *  \param[in]   nDataSetSize: DataSet Size to be get
 *
 *  \param[out]  *pnData: 8-bit pointer which points to data buffer
 *
-*  \return  ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
-*
+*  \return      ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
 ******************************************************************************/
 uint16_t adi_adpddrv_ReadFifoData(uint16_t nDataSetSize, uint8_t *pnData)
 {
@@ -808,12 +791,12 @@ uint16_t adi_adpddrv_ReadFifoData(uint16_t nDataSetSize, uint8_t *pnData)
         anTxData[1] = (uint8_t)(nTmpAddr);
         /*
         The first argument to the function is the register address of the
-        ADPD400x device from where the data is to be read.
+        ADPD4x device from where the data is to be read.
         The 2nd argument is the pointer to the buffer of received data.
         The size of this buffer should be equal to the number of data requested.
         The 3rd argument is the size of transmit data in bytes.
         The 4th argument is the size of requested data in bytes.
-        Adpd400x_SPI_Receive() should be implemented in such a way that it transmits
+        Adpd4x_SPI_Receive() should be implemented in such a way that it transmits
         the register address from the first argument and receives the data
         specified by the address in the second argument. The received data will
         be of size specified by 3rd argument.
@@ -828,12 +811,12 @@ uint16_t adi_adpddrv_ReadFifoData(uint16_t nDataSetSize, uint8_t *pnData)
       case E_ADI_ADPD_I2C_BUS:
         /*
         The first argument to the function is the register address of the
-        ADPD400x device from where the data is to be read.
+        ADPD4x device from where the data is to be read.
         The 2nd argument is the pointer to the buffer of received data.
         The size of this buffer should be equal to the number of data requested.
         The 3rd argument is the size of transmit data in bytes.
         The 4th argument is the size of requested data in bytes.
-        Adpd400x_I2C_TxRx() should be implemented in such a way that it transmits
+        Adpd4x_I2C_TxRx() should be implemented in such a way that it transmits
         the register address from the first argument and receives the data
         specified by the address in the second argument. The received data will
         be of size specified by 3rd argument.
@@ -866,20 +849,17 @@ uint16_t adi_adpddrv_ReadFifoData(uint16_t nDataSetSize, uint8_t *pnData)
 }
 
 /*!****************************************************************************
-*  \b              adi_adpddrv_ReadRegData
+*  \brief       Synchronous register read from the ADPD4x data registers
 *
-*  Synchronous register read from the ADPD400x data registers
+*  \param[in]   nSlotNum: 8-bit slot number
 *
-*  \param[in]  nSlotNum: 8-bit slot number
+*  \param[in]   nSignalDark: 8-bit signal/dark flag
 *
-*  \param[in]  nSignalDark: 8-bit signal/dark flag
-*
-*  \param[in]  nChNum: 8-bit channel number info
+*  \param[in]   nChNum: 8-bit channel number info
 *
 *  \param[out]  *pnData: Pointer to 32-bit register data value
 *
-*  \return  ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
-*
+*  \return      ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
 ******************************************************************************/
 uint16_t adi_adpddrv_ReadRegData(ADI_ADPD_SLOT_NUM nSlotNum, uint8_t nSignalDark, uint8_t nChNum, uint32_t *pnData)
 {
@@ -902,17 +882,17 @@ uint16_t adi_adpddrv_ReadRegData(ADI_ADPD_SLOT_NUM nSlotNum, uint8_t nSignalDark
   {
     /* To set the last bit low for read operation*/
     nTmpAddr = (nAddr << 1U) & ADPD400x_SPI_READ;
-    /*! Prepare the transmit buffer with register address */
+    /* Prepare the transmit buffer with register address */
     anTxData[nTxSize++] = (uint8_t)(nTmpAddr >> 8);
     anTxData[nTxSize++] = (uint8_t)(nTmpAddr);
     /*
     The first argument to the function is the register address of the
-    ADPD400x device from where the data is to be read.
+    ADPD4x device from where the data is to be read.
     The 2nd argument is the pointer to the buffer of received data.
     The size of this buffer should be equal to the number of data requested.
     The 3rd argument is the size of transmit data in bytes.
     The 4th argument is the size of requested data in bytes.
-    Adpd400x_SPI_Receive() should be implemented in such a way that it transmits
+    Adpd4x_SPI_Receive() should be implemented in such a way that it transmits
     the register address from the first argument and receives the data
     specified by the address in the second argument. The received data will
     be of size specified by 3rd argument.
@@ -938,12 +918,12 @@ uint16_t adi_adpddrv_ReadRegData(ADI_ADPD_SLOT_NUM nSlotNum, uint8_t nSignalDark
     }
     /*
     The first argument to the function is the register address of the
-    ADPD400x device from where the data is to be read.
+    ADPD4x device from where the data is to be read.
     The 2nd argument is the pointer to the buffer of received data.
     The size of this buffer should be equal to the number of data requested.
     The 3rd argument is the size of transmit data in bytes.
     The 4th argument is the size of requested data in bytes.
-    Adpd400x_I2C_TxRx() should be implemented in such a way that it transmits
+    Adpd4x_I2C_TxRx() should be implemented in such a way that it transmits
     the register address from the first argument and receives the data
     specified by the address in the second argument. The received data will
     be of size specified by 3rd argument.
@@ -976,12 +956,9 @@ uint16_t adi_adpddrv_ReadRegData(ADI_ADPD_SLOT_NUM nSlotNum, uint8_t nSignalDark
 
 /*!****************************************************************************
 *
-*  \b              adi_adpddrv_SoftReset
+*  \brief       Soft reset the ADPD4x device
 *
-*  Soft reset the ADPD400x device
-*
-*  \return  ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
-*
+*  \return      ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
 ******************************************************************************/
 uint16_t adi_adpddrv_SoftReset(void)
 {
@@ -1027,12 +1004,10 @@ uint16_t adi_adpddrv_SoftReset(void)
 }
 
 /*!****************************************************************************
-*  \b              adi_adpddrv_SetIdleMode
 *
-*  Set device to Idle mode
+*  \brief       Set device to Idle mode
 *
 *  \return      ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
-*
 ******************************************************************************/
 uint16_t adi_adpddrv_SetIdleMode(void)
 {
@@ -1057,12 +1032,10 @@ uint16_t adi_adpddrv_SetIdleMode(void)
 }
 
 /*!****************************************************************************
-*  \b              adi_adpddrv_GetDevId
 *
-*  Get the Device ID for setting proper device specific params
+*  \brief       Get the Device ID for setting proper device specific params
 
 *  \return      16-bit Device ID
-*
 ******************************************************************************/
 uint16_t adi_adpddrv_GetDevId(void)
 {
@@ -1075,12 +1048,10 @@ uint16_t adi_adpddrv_GetDevId(void)
 /********************************************************************************************/
 
 /*!****************************************************************************
-*  \b              _adi_adpddrv_SelComMode
 *
-*  Determines if the ADPD400x is on an SPI or I2C bus
+*  \brief       Determines if the ADPD4x is on an SPI or I2C bus
 
 *  \return      ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
-*
 ******************************************************************************/
 static uint16_t _adi_adpddrv_SelComMode(void)
 {
@@ -1133,12 +1104,10 @@ static uint16_t _adi_adpddrv_SelComMode(void)
 }
 
 /*!****************************************************************************
-*  \b              _adi_adpddrv_SetInterrupt
 *
-*  Set FIFO interrupt mode
+*  \brief       Set FIFO interrupt mode
 *
 *  \return      ADI_ADPD_DRV_SUCCESS=success, ADI_ADPD_DRV_ERROR=error
-*
 *****************************************************************************/
 static uint16_t _adi_adpddrv_SetInterrupt(void)
 {
@@ -1173,12 +1142,10 @@ static uint16_t _adi_adpddrv_SetInterrupt(void)
   return nRetCode;
 }
 /*!****************************************************************************
-*  \b              _adi_adpddrv_CheckFifoOvFl
 *
-*  Check the Fifo Level if the size has exceeded the Max Fifo Depth
+*  \brief       Check the Fifo Level if the size has exceeded the Max Fifo Depth
 *
 *  \return       None
-*
 *****************************************************************************/
 static void _adi_adpddrv_CheckFifoOvFl(void)
 {
